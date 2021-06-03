@@ -3,8 +3,8 @@
 #define APIENTRY __stdcall
 #define WINGDIAPI __declspec(dllimport)
 #include <gl/gl.h>
+
 typedef void* (type_wglGetProcAddress)(const char *);
-type_wglGetProcAddress *wglGetProcAddress;
 
 typedef signed long long int GLsizeiptr;
 typedef char GLchar;
@@ -16,6 +16,28 @@ typedef char GLchar;
 #define GL_VALIDATE_STATUS                0x8B83
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_STATIC_DRAW                    0x88E4
+#define GL_MAX_VERTEX_ATTRIBS             0x8869
+#define GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS 0x8B4C
+#define GL_MAX_DRAW_BUFFERS               0x8824
+#define GL_ACTIVE_UNIFORMS                0x8B86
+#define GL_ACTIVE_UNIFORM_MAX_LENGTH      0x8B87
+#define GL_ACTIVE_ATTRIBUTES              0x8B89
+#define GL_ACTIVE_ATTRIBUTE_MAX_LENGTH    0x8B8A
+#define GL_SHADING_LANGUAGE_VERSION       0x8B8C
+#define GL_NEAREST                        0x2600
+#define GL_LINEAR                         0x2601
+#define GL_NEAREST_MIPMAP_NEAREST         0x2700
+#define GL_LINEAR_MIPMAP_NEAREST          0x2701
+#define GL_NEAREST_MIPMAP_LINEAR          0x2702
+#define GL_LINEAR_MIPMAP_LINEAR           0x2703
+#define GL_TEXTURE_MAG_FILTER             0x2800
+#define GL_TEXTURE_MIN_FILTER             0x2801
+#define GL_TEXTURE_WRAP_S                 0x2802
+#define GL_TEXTURE_WRAP_T                 0x2803
+#define GL_REPEAT                         0x2901
+#define GL_TEXTURE_2D                     0x0DE1
+#define GL_FLOAT                          0x1406
+
 
 typedef void type_glBindBuffer (GLenum target, GLuint buffer);
 typedef void type_glGenBuffers (GLsizei n, GLuint *buffers);
@@ -38,9 +60,10 @@ typedef void type_glGetProgramInfoLog (GLuint program, GLsizei bufSize, GLsizei 
 typedef void type_glGetShaderiv (GLuint shader, GLenum pname, GLint *params);
 typedef void type_glGetShaderInfoLog (GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
 typedef void type_glDeleteShader (GLuint shader);
+typedef GLint type_glGetAttribLocation (GLuint program, const GLchar *name);
 
 #define OpenGLFunction(name) type_##name *##name;
-#define GetOpenGLFuncAddress(name) name = (type_##name *)glGetProcAddress(#name);
+#define GetOpenGLFuncAddress(name) name = (type_##name *)wglGetProcAddress(#name);
 
 OpenGLFunction(glBindBuffer)
 OpenGLFunction(glGenBuffers)
@@ -64,7 +87,7 @@ OpenGLFunction(glVertexAttribPointer)
 OpenGLFunction(glDeleteShader)
 
 static void
-AssignOpenGLFunctions(type_wglGetProcAddress *glGetProcAddress)
+AssignOpenGLFunctions(type_wglGetProcAddress *wglGetProcAddress)
 {
     GetOpenGLFuncAddress(glBindBuffer);
     GetOpenGLFuncAddress(glGenBuffers);
@@ -86,4 +109,5 @@ AssignOpenGLFunctions(type_wglGetProcAddress *glGetProcAddress)
     GetOpenGLFuncAddress(glGetProgramInfoLog);
     GetOpenGLFuncAddress(glVertexAttribPointer);
     GetOpenGLFuncAddress(glDeleteShader);
+
 }

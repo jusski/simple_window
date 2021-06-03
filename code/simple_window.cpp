@@ -145,6 +145,7 @@ int main()
                 DispatchMessage(&Msg);
             }
             Engine();
+            Sleep(30);
             SwapBuffers(DeviceContext);
         }
     }

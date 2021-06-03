@@ -1,6 +1,7 @@
 #pragma once
 GLuint VBO;
 GLuint Program = 0;
+GLint Position;
 
 float vertices[] =
 {

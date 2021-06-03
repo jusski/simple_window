@@ -87,11 +87,14 @@ CreateOpenGLProgram()
     if(Success)
     {
         Result = Program;
+        Position = glGetAttribLocation(Program, "aPosition");
+        
         glDeleteShader(VertexShader);
         glDeleteShader(FragmentShader);
     }
     else
     {
+        
         char InfoLog[512];
         glGetProgramInfoLog(Program, sizeof(InfoLog), 0, InfoLog);
         fprintf(stderr, "ERROR: PROGRAM::LINK_FAILED\n%s\n", InfoLog);
@@ -101,10 +104,16 @@ CreateOpenGLProgram()
 }
 
 extern "C" __declspec(dllexport) void
-InitializeOpenGL(type_wglGetProcAddress *glGetProcAddress)
+InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
 {
-    AssignOpenGLFunctions(glGetProcAddress);
-}
+    AssignOpenGLFunctions(wglGetProcAddress);
+
+    #define GL_GETINTEGERV(N) {GLint T; glGetIntegerv(N, &T); printf(#N ": %d\n", T);}
+    GL_GETINTEGERV(GL_MAX_VERTEX_ATTRIBS);
+    GL_GETINTEGERV(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+    GL_GETINTEGERV(GL_MAX_DRAW_BUFFERS);
+  
+} 
 
 extern "C" __declspec(dllexport) void
 Engine()
@@ -112,10 +121,12 @@ Engine()
     if(!Program)
     {
         Program = CreateOpenGLProgram();
+
         glGenBuffers(1, &VBO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+       //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     }
 
     glViewport(0, 0, 500, 500);
@@ -125,9 +136,9 @@ Engine()
     glUseProgram(Program);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(Position);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
-    //Sleep(30);
+
 }

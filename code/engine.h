@@ -2,26 +2,50 @@
 GLuint VBO;
 GLuint Program = 0;
 GLint Position;
+GLint Color;
+//GLint Time;
 
 float vertices[] =
 {
-    -0.5f, -0.5f, 0.0f,
-    0.5f, -0.5f, 0.0f,
-    0.0f,  0.5f, 0.0f
+    -0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
+    0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f
 };
 
-const char *VertexShaderSource =
-"#version 110 \n"
-"attribute vec3 aPos;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-"}\0";
+union vertice
+{
+    struct 
+    {
+        float P[3];
+        float C[3];    
+    };
+    struct 
+    {
+        float x;
+        float y;
+        float z;
 
-const char *FragmentShaderSource =
-"#version 110 \n"
-"void main()\n"
-"{\n"
-"   gl_FragColor = vec4(1.0, 0.5, 0.2, 1.0);\n"
-"}\0";
+        float r;
+        float g;
+        float b;
+    };
+};
 
+union triangle
+{
+    struct
+    {
+        vertice A;
+        vertice B;
+        vertice C;    
+    };
+    vertice P[3];
+    
+};
+
+triangle Triangle =
+{
+    -0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
+    0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f
+};

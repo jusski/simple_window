@@ -139,7 +139,7 @@ int main()
         while(Running)
         {
             MSG Msg;
-            if(GetMessage(&Msg, NULL, 0, 0) > 0)
+            if(PeekMessage(&Msg, 0, 0, 0, PM_REMOVE) > 0)
             {
                 TranslateMessage(&Msg);
                 DispatchMessage(&Msg);

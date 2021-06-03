@@ -9,6 +9,8 @@ typedef void* (type_wglGetProcAddress)(const char *);
 typedef signed long long int GLsizeiptr;
 typedef char GLchar;
 
+#define GL_STREAM_DRAW                    0x88E0
+#define GL_DYNAMIC_DRAW                   0x88E8
 #define GL_FRAGMENT_SHADER                0x8B30
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_COMPILE_STATUS                 0x8B81
@@ -61,6 +63,10 @@ typedef void type_glGetShaderiv (GLuint shader, GLenum pname, GLint *params);
 typedef void type_glGetShaderInfoLog (GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
 typedef void type_glDeleteShader (GLuint shader);
 typedef GLint type_glGetAttribLocation (GLuint program, const GLchar *name);
+typedef void type_glUniform1f (GLint location, GLfloat v0);
+typedef void type_glUniform2f (GLint location, GLfloat v0, GLfloat v1);
+typedef void type_glUniform3f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
+typedef void type_glUniform4f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 
 #define OpenGLFunction(name) type_##name *##name;
 #define GetOpenGLFuncAddress(name) name = (type_##name *)wglGetProcAddress(#name);
@@ -85,6 +91,10 @@ OpenGLFunction(glGetProgramiv)
 OpenGLFunction(glGetProgramInfoLog)
 OpenGLFunction(glVertexAttribPointer)
 OpenGLFunction(glDeleteShader)
+OpenGLFunction(glUniform1f)
+OpenGLFunction(glUniform2f)
+OpenGLFunction(glUniform3f)
+OpenGLFunction(glUniform4f)
 
 static void
 AssignOpenGLFunctions(type_wglGetProcAddress *wglGetProcAddress)
@@ -109,5 +119,8 @@ AssignOpenGLFunctions(type_wglGetProcAddress *wglGetProcAddress)
     GetOpenGLFuncAddress(glGetProgramInfoLog);
     GetOpenGLFuncAddress(glVertexAttribPointer);
     GetOpenGLFuncAddress(glDeleteShader);
-
+    GetOpenGLFuncAddress(glUniform1f)
+    GetOpenGLFuncAddress(glUniform2f)
+    GetOpenGLFuncAddress(glUniform3f)
+    GetOpenGLFuncAddress(glUniform4f)
 }

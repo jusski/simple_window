@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "opengl.h"
 #include "engine.h"
+#include "math.h"
 
 static char *
 ReadShader(const char *Path)
@@ -29,7 +31,7 @@ ReadShader(const char *Path)
     }
     else
     {
-        __debugbreak();
+        fprintf(stderr, "[ERROR]: File not found: %s\n", Path);
     }
 
     return(Result);
@@ -74,8 +76,8 @@ CreateOpenGLProgram()
 {
     GLuint Result = 0;
 
-    GLuint VertexShader = CreateShader(GL_VERTEX_SHADER, "../code/shaders/simple.vs");
-    GLuint FragmentShader = CreateShader(GL_FRAGMENT_SHADER, "../code/shaders/simple.fs");
+    GLuint VertexShader = CreateShader(GL_VERTEX_SHADER, "../code/shaders/vertex.vs");
+    GLuint FragmentShader = CreateShader(GL_FRAGMENT_SHADER, "../code/shaders/fragment.fs");
 
     Program = glCreateProgram();
     glAttachShader(Program, VertexShader);
@@ -88,13 +90,14 @@ CreateOpenGLProgram()
     {
         Result = Program;
         Position = glGetAttribLocation(Program, "aPosition");
+        Color = glGetAttribLocation(Program, "aColor");
+        //Time = glGetUniformLocation(Program, "Time");
         
         glDeleteShader(VertexShader);
         glDeleteShader(FragmentShader);
     }
     else
     {
-        
         char InfoLog[512];
         glGetProgramInfoLog(Program, sizeof(InfoLog), 0, InfoLog);
         fprintf(stderr, "ERROR: PROGRAM::LINK_FAILED\n%s\n", InfoLog);
@@ -127,6 +130,8 @@ Engine()
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        printf("offsetof: %zd\n", offsetof(vertice, P));
+        printf("offsetof: %zd\n", offsetof(vertice, C));
     }
 
     glViewport(0, 0, 500, 500);
@@ -136,9 +141,23 @@ Engine()
     glUseProgram(Program);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Triangle), &Triangle, GL_STREAM_DRAW);
+    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertice), (void*)offsetof(vertice, P));
     glEnableVertexAttribArray(Position);
 
+    glVertexAttribPointer(Color, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertice), (void*)offsetof(vertice, C));
+    glEnableVertexAttribArray(Color);
+
+    static float Time = 0.0f;
+    Time += 0.01f;
+    
+    //glUniform1f(Time, 1.0f);
+    Triangle.A.x = ClampRange(sinf(Time), -0.2, -0.8, -1.0, 1.0);
+    Triangle.A.y = ClampRange(sinf(Time), -0.2, -0.8, -1.0, 1.0);
+    //printf("%f ", vertices[0]);
+    
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
 }

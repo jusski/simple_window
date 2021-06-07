@@ -10,6 +10,7 @@ type_InitializeOpenGL *InitializeOpenGL;
     
 static HDC DeviceContext;
 static volatile bool Running = true;
+static volatile bool Paused = false;
 
 static void
 Win32InitializeOpenGL()
@@ -63,24 +64,35 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch(msg)
     {
-        case WM_NCHITTEST: {
+        case(WM_NCHITTEST): {
             LRESULT Hit = DefWindowProc(hwnd, msg, wParam, lParam);
             if (Hit == HTCLIENT) Hit = HTCAPTION;
             return Hit;
         } break;
-        case WM_KEYDOWN:
+        case(WM_KEYDOWN):
         {
             if (wParam == VK_ESCAPE)
             {
                 Running = false;
             }
+            if (wParam == VK_SPACE)
+            {
+                Paused = true;
+            }
         } break;
-        case WM_CLOSE:
+        case(WM_KEYUP):
+        {
+            if(wParam == VK_SPACE)
+            {
+                Paused = false;
+            }
+        } break;
+        case(WM_CLOSE):
         {
             DestroyWindow(hwnd);
             Running = false;
         } break;
-        case WM_DESTROY:
+        case(WM_DESTROY):
         {
             PostQuitMessage(0);
             Running = false;
@@ -108,7 +120,7 @@ int main()
     WindowClass.hInstance     = GetModuleHandle(0);
     WindowClass.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
     WindowClass.hCursor       = LoadCursor(NULL, IDC_ARROW);
-    WindowClass.hbrBackground = 0; //(HBRUSH)(COLOR_WINDOW+1);
+    WindowClass.hbrBackground = 0;
     WindowClass.lpszMenuName  = NULL;
     WindowClass.lpszClassName = "SimpleOpenGLWindow";
     WindowClass.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
@@ -123,7 +135,7 @@ int main()
     Window = CreateWindowEx(WS_EX_CLIENTEDGE,
                             WindowClass.lpszClassName,
                             "Simple OpenGL Window",
-                            WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 300, 200,
+                            WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 500, 500,
                             NULL, NULL, GetModuleHandle(0), NULL);
 
     if(Window)
@@ -144,9 +156,12 @@ int main()
                 TranslateMessage(&Msg);
                 DispatchMessage(&Msg);
             }
-            Engine();
-            Sleep(30);
-            SwapBuffers(DeviceContext);
+            if(!Paused)
+            {
+                Engine();
+                Sleep(30);
+                SwapBuffers(DeviceContext);    
+            }
         }
     }
     else

@@ -5,20 +5,8 @@ GLint Position;
 GLint Color;
 //GLint Time;
 
-float vertices[] =
+union vertex
 {
-    -0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
-    0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-    0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f
-};
-
-union vertice
-{
-    struct 
-    {
-        float P[3];
-        float C[3];    
-    };
     struct 
     {
         float x;
@@ -29,18 +17,29 @@ union vertice
         float g;
         float b;
     };
-};
-
-union triangle
-{
     struct
     {
-        vertice A;
-        vertice B;
-        vertice C;    
+        v3 P;
+        v3 C;
     };
-    vertice P[3];
-    
+};
+
+union vertex2
+{
+    float x,y,z;
+    v3 P;
+};
+
+struct triangle
+{
+    vertex A;
+    vertex B;
+    vertex C;    
+};
+
+struct point
+{
+    vertex2 A;
 };
 
 triangle Triangle =
@@ -49,3 +48,9 @@ triangle Triangle =
     0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
     0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f
 };
+
+triangle *Triangles;
+int TriangleCount;
+
+point *Points;
+int PointCount;

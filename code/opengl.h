@@ -67,9 +67,11 @@ typedef void type_glUniform1f (GLint location, GLfloat v0);
 typedef void type_glUniform2f (GLint location, GLfloat v0, GLfloat v1);
 typedef void type_glUniform3f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
 typedef void type_glUniform4f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
+typedef void type_glGenerateMipmap (GLenum target);
 
 #define OpenGLFunction(name) type_##name *##name;
 #define GetOpenGLFuncAddress(name) name = (type_##name *)wglGetProcAddress(#name);
+#define GetOpenGLFuncAddressEXT(name) name = (type_##name *)wglGetProcAddress(#name"EXT");
 
 OpenGLFunction(glBindBuffer)
 OpenGLFunction(glGenBuffers)
@@ -95,6 +97,7 @@ OpenGLFunction(glUniform1f)
 OpenGLFunction(glUniform2f)
 OpenGLFunction(glUniform3f)
 OpenGLFunction(glUniform4f)
+OpenGLFunction(glGenerateMipmap)
 
 static void
 AssignOpenGLFunctions(type_wglGetProcAddress *wglGetProcAddress)
@@ -123,4 +126,5 @@ AssignOpenGLFunctions(type_wglGetProcAddress *wglGetProcAddress)
     GetOpenGLFuncAddress(glUniform2f)
     GetOpenGLFuncAddress(glUniform3f)
     GetOpenGLFuncAddress(glUniform4f)
+    GetOpenGLFuncAddressEXT(glGenerateMipmap)
 }

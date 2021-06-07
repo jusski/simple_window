@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "platform.h"
 #include "opengl.h"
-#include "engine.h"
 #include "math.h"
+#include "engine.h"
+#include "sphere.inl"
 
 static char *
 ReadShader(const char *Path)
@@ -115,8 +117,45 @@ InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
     GL_GETINTEGERV(GL_MAX_VERTEX_ATTRIBS);
     GL_GETINTEGERV(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS);
     GL_GETINTEGERV(GL_MAX_DRAW_BUFFERS);
+    glPointSize(10);
   
-} 
+}
+
+static void
+DrawFigures(triangle *Figures, int Count)
+{
+    glUseProgram(Program);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle) * Count, Figures, GL_STREAM_DRAW);
+    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertex), (void*)offsetof(vertex, P));
+    glEnableVertexAttribArray(Position);
+
+    glVertexAttribPointer(Color, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertex), (void*)offsetof(vertex, C));
+    glEnableVertexAttribArray(Color);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3 * Count);
+}
+
+static void
+DrawFigures(point *Figures, int Count)
+{
+    glUseProgram(Program);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(point) * Count, Figures, GL_STREAM_DRAW);
+    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertex), (void*)offsetof(vertex, P));
+    glEnableVertexAttribArray(Position);
+
+    //glVertexAttribPointer(Color, 3, GL_FLOAT, GL_FALSE,
+    //                    sizeof(vertex), (void*)offsetof(vertex, C));
+    //glEnableVertexAttribArray(Color);
+
+    glDrawArrays(GL_POINTS, 0, Count);
+}
 
 extern "C" __declspec(dllexport) void
 Engine()
@@ -126,38 +165,54 @@ Engine()
         Program = CreateOpenGLProgram();
 
         glGenBuffers(1, &VBO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-       //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        printf("offsetof: %zd\n", offsetof(vertice, P));
-        printf("offsetof: %zd\n", offsetof(vertice, C));
+        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        
+        TriangleCount = 1;
+        Triangles = (triangle *)malloc(sizeof(triangle) * TriangleCount);
+        for(int Index = 0; Index < TriangleCount; ++Index)
+        {
+            triangle *T = Triangles + Index;
+            *T = Triangle;
+
+            float OffsetX = RandomRange(-0.3, 0.3);
+            float OffsetY = RandomRange(-0.3, 0.3);
+            
+            T->A.x += OffsetX;
+            T->B.x += OffsetX;
+            T->C.x += OffsetX;
+                        
+            T->A.y += OffsetY;
+            T->B.y += OffsetY;
+            T->C.y += OffsetY;
+        }
+
+        PointCount = 1;
+        Points = (point *)malloc(sizeof(point) * PointCount);
+        
     }
 
     glViewport(0, 0, 500, 500);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     
-    glUseProgram(Program);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Triangle), &Triangle, GL_STREAM_DRAW);
-    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(vertice), (void*)offsetof(vertice, P));
-    glEnableVertexAttribArray(Position);
-
-    glVertexAttribPointer(Color, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(vertice), (void*)offsetof(vertice, C));
-    glEnableVertexAttribArray(Color);
-
+    
     static float Time = 0.0f;
-    Time += 0.01f;
+    Time += 0.05f;
     
-    //glUniform1f(Time, 1.0f);
-    Triangle.A.x = ClampRange(sinf(Time), -0.2, -0.8, -1.0, 1.0);
-    Triangle.A.y = ClampRange(sinf(Time), -0.2, -0.8, -1.0, 1.0);
-    //printf("%f ", vertices[0]);
-    
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    for(int Index = 0; Index < TriangleCount; ++Index)
+    {
+        float t = Time;
+        triangle *T = Triangles + Index;
 
+        T->A.P = YRotate(t) * Triangle.A.P;
+        T->B.P = YRotate(t) * Triangle.B.P;
+        T->C.P = YRotate(t) * Triangle.C.P;
+        
+    }
+
+    //DrawFigures(Triangles, TriangleCount);
+    DrawFigures(Points, PointCount);
+    int SpherePointCount = sizeof(Sphere)/sizeof(point);
+    DrawFigures(Sphere, 20);
 }

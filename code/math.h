@@ -1,25 +1,88 @@
 #pragma once
 
-#define Min(A, B) A < B ? A : B
-#define Max(A, B) A > B ? A : B
+static float
+Clamp(float A, float MinA, float MaxA)
+{
+    float Result = Max(Min(A, MaxA), MinA);
+    return(Result);
+}
 
 static float
 Clamp01(float A)
 {
-    float Result = Max(Min(A, 1.0f), 0.0f);
+    float Result = Clamp(A, 0.0f, 1.0f);
     return(Result);
 }
 
 static float
-Clamp01Range(float A, float MinA, float MaxA)
+RandomUnilateral()
 {
-    float Result = (A - MinA) / (MaxA - MinA);
+    float Result = (float)rand() / RAND_MAX;
     return(Result);
 }
 
 static float
-ClampRange(float A, float MinRange, float MaxRange, float MinA, float MaxA)
+RandomBilateral()
 {
-    float Result = Clamp01Range(A, MinA, MaxA) * (MaxRange - MinRange) + MinRange;
+    float Result = 2*RandomUnilateral() - 1.0f;
+    return(Result);
+}
+
+static float
+RandomRange(float Min, float Max)
+{
+    float Result = RandomUnilateral() * (Max - Min) + Min;
+    return(Result);
+}
+
+float Radians(float Angle)
+{
+    float Result = Angle * Pi / 180.0f;
+    return(Result);
+}
+
+static m3
+ZRotate(float Angle)
+{
+    float C = cosf(Angle);
+    float S = sinf(Angle);
+    m3 Result =
+    {
+        C, -S, 0,
+        S,  C, 0,
+        0,  0, 1
+    };
+
+    return(Result);
+}
+
+static m3
+XRotate(float Angle)
+{
+    float C = cosf(Angle);
+    float S = sinf(Angle);
+    m3 Result =
+    {
+        1, 0,  0,
+        0, C, -S,
+        0, S,  C
+    };
+
+    return(Result);
+}
+
+
+static m3
+YRotate(float Angle)
+{
+    float C = cosf(Angle);
+    float S = sinf(Angle);
+    m3 Result =
+    {
+        C, 0, -S,
+        0, 1,  0,
+        S, 0,  C
+    };
+
     return(Result);
 }

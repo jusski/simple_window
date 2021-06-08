@@ -48,9 +48,9 @@ ZRotate(float Angle)
     float S = sinf(Angle);
     m3 Result =
     {
-        C, -S, 0,
-        S,  C, 0,
-        0,  0, 1
+        C,-S, 0,
+        S, C, 0,
+        0, 0, 1
     };
 
     return(Result);
@@ -63,9 +63,9 @@ XRotate(float Angle)
     float S = sinf(Angle);
     m3 Result =
     {
-        1, 0,  0,
-        0, C, -S,
-        0, S,  C
+        1, 0, 0,
+        0, C,-S,
+        0, S, C
     };
 
     return(Result);
@@ -79,9 +79,80 @@ YRotate(float Angle)
     float S = sinf(Angle);
     m3 Result =
     {
-        C, 0, -S,
-        0, 1,  0,
-        S, 0,  C
+        C, 0, S,
+        0, 1, 0,
+       -S, 0, C
+    };
+
+    return(Result);
+}
+
+static m3
+Scale(float A)
+{
+    m3 Result =
+    {
+        A, 0, 0,
+        0, A, 0,
+        0, 0, A
+    };
+
+    return(Result);
+}
+
+static m4
+XTranslate(float A)
+{
+    m4 Result =
+    {
+        1, 0, 0, A,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    };
+
+    return(Result);
+}
+
+
+static m4
+YTranslate(float A)
+{
+    m4 Result =
+    {
+        1, 0, 0, 0,
+        0, 1, 0, A,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    };
+
+    return(Result);
+}
+
+
+static m4
+ZTranslate(float A)
+{
+    m4 Result =
+    {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, A,
+        0, 0, 0, 1
+    };
+
+    return(Result);
+}
+
+static m3
+Translate(v3 A)
+{
+    m4 Result =
+    {
+        1, 0, 0, A.x,
+        0, 1, 0, A.y,
+        0, 0, 1, A.z,
+        0, 0, 0, 1
     };
 
     return(Result);

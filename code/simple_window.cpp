@@ -132,12 +132,12 @@ int main()
         return 0;
     }
 
-    Window = CreateWindowEx(WS_EX_CLIENTEDGE,
+    Window = CreateWindowEx(0,
                             WindowClass.lpszClassName,
                             "Simple OpenGL Window",
-                            WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 500, 500,
+                            WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT, 500, 500,
                             NULL, NULL, GetModuleHandle(0), NULL);
-
+    SetWindowLong(Window, GWL_EXSTYLE, 0);
     if(Window)
     {
         printf("Creating Window.\n");

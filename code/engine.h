@@ -3,30 +3,14 @@ GLuint VBO;
 GLuint Program = 0;
 GLint Position;
 GLint Color;
-//GLint Time;
+GLint RotationMatrix;
 
 union vertex
 {
-    struct 
-    {
-        float x;
-        float y;
-        float z;
-
-        float r;
-        float g;
-        float b;
-    };
     struct
     {
-        v3 P;
-        v3 C;
+        float x,y,z;
     };
-};
-
-union vertex2
-{
-    float x,y,z;
     v3 P;
 };
 
@@ -39,18 +23,28 @@ struct triangle
 
 struct point
 {
-    vertex2 A;
+    vertex A;
 };
 
 triangle Triangle =
 {
-    -0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
-    0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-    0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f
+    -0.5f, -0.5f, 0.0f,  
+    0.5f, -0.5f, 0.0f, 
+    0.0f,  0.5f, 0.0f, 
 };
-
-triangle *Triangles;
-int TriangleCount;
 
 point *Points;
 int PointCount;
+
+struct model
+{
+    vertex *Vertices;
+    int *Indices;
+
+    int IndexCount;
+    int VertexCount;
+};
+
+arena PersistentArena;
+
+model *Sphere;

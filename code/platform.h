@@ -1,5 +1,8 @@
 #pragma once
 
+#define KiloBytes(N) 1024L * N
+#define Megabytes(N) 1024L * KiloBytes(N)
+#define Assert(Statement) if(!(Statement)) __debugbreak();
 #define ArrayCount(A) sizeof(A) / sizeof(A[0])
 #define Min(A, B) A < B ? A : B
 #define Max(A, B) A > B ? A : B
@@ -200,5 +203,25 @@ operator*(m3 A, m3 B)
             }
         }
     }
+    return(Result);
+}
+
+struct arena
+{
+    unsigned char *Memory;
+    unsigned int Index;
+    unsigned int MaxIndex;
+};
+
+#define PushStruct(Arena, Struct) (Struct *) PushSize(Arena, sizeof(Struct))
+
+static void *
+PushSize(arena *Arena, unsigned int Size)
+{
+    Assert(Arena);
+    Assert((Arena->Index + Size) < Arena->MaxIndex);
+    void *Result = Arena->Memory + Arena->Index;
+    Arena->Index += Size;
+
     return(Result);
 }

@@ -3,10 +3,10 @@
 #include <math.h>
 
 #include "platform.h"
-#include "opengl.h"
-#include "math.h"
+#include "opengl.cpp"
 #include "engine.h"
-#include "sphere.inl"
+#include "math.h"
+//#include "sphere.inl"
 
 static char *
 ReadShader(const char *Path)
@@ -92,8 +92,8 @@ CreateOpenGLProgram()
     {
         Result = Program;
         Position = glGetAttribLocation(Program, "aPosition");
-        Color = glGetAttribLocation(Program, "aColor");
-        //Time = glGetUniformLocation(Program, "Time");
+        //Color = glGetAttribLocation(Program, "aColor");
+        RotationMatrix = glGetUniformLocation(Program, "RotationMatrix");
         
         glDeleteShader(VertexShader);
         glDeleteShader(FragmentShader);
@@ -132,10 +132,6 @@ DrawFigures(triangle *Figures, int Count)
                           sizeof(vertex), (void*)offsetof(vertex, P));
     glEnableVertexAttribArray(Position);
 
-    glVertexAttribPointer(Color, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(vertex), (void*)offsetof(vertex, C));
-    glEnableVertexAttribArray(Color);
-
     glDrawArrays(GL_TRIANGLES, 0, 3 * Count);
 }
 
@@ -149,44 +145,47 @@ DrawFigures(point *Figures, int Count)
     glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
                           sizeof(vertex), (void*)offsetof(vertex, P));
     glEnableVertexAttribArray(Position);
-
-    //glVertexAttribPointer(Color, 3, GL_FLOAT, GL_FALSE,
-    //                    sizeof(vertex), (void*)offsetof(vertex, C));
-    //glEnableVertexAttribArray(Color);
-
+    
     glDrawArrays(GL_POINTS, 0, Count);
+}
+
+static void
+DrawFigures(vertex *Figures, int Count)
+{
+    glUseProgram(Program);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * Count, Figures, GL_STREAM_DRAW);
+    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertex), (void*)offsetof(vertex, P));
+    glEnableVertexAttribArray(Position);
+
+    static float Time = 0.0f;
+    Time += 0.01f;
+    
+    m3 Rotation = YRotate(Time);
+    glUniformMatrix3fv(RotationMatrix, 1, GL_TRUE, (GLfloat *)Rotation.E);
+    
+    glDrawArrays(GL_TRIANGLES, 0, Count);
 }
 
 extern "C" __declspec(dllexport) void
 Engine()
 {
+    arena *Arena = &PersistentArena;
     if(!Program)
     {
+        Arena->Memory = (unsigned char *)malloc(Megabytes(3));
+        Arena->Index = 0;
+        Arena->MaxIndex = Megabytes(3);
+        
+        Sphere = LoadModel(Arena, "../code/models/sphere.stl");
         Program = CreateOpenGLProgram();
 
         glGenBuffers(1, &VBO);
 
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         
-        TriangleCount = 1;
-        Triangles = (triangle *)malloc(sizeof(triangle) * TriangleCount);
-        for(int Index = 0; Index < TriangleCount; ++Index)
-        {
-            triangle *T = Triangles + Index;
-            *T = Triangle;
-
-            float OffsetX = RandomRange(-0.3, 0.3);
-            float OffsetY = RandomRange(-0.3, 0.3);
-            
-            T->A.x += OffsetX;
-            T->B.x += OffsetX;
-            T->C.x += OffsetX;
-                        
-            T->A.y += OffsetY;
-            T->B.y += OffsetY;
-            T->C.y += OffsetY;
-        }
-
         PointCount = 1;
         Points = (point *)malloc(sizeof(point) * PointCount);
         
@@ -200,19 +199,7 @@ Engine()
     static float Time = 0.0f;
     Time += 0.05f;
     
-    for(int Index = 0; Index < TriangleCount; ++Index)
-    {
-        float t = Time;
-        triangle *T = Triangles + Index;
-
-        T->A.P = YRotate(t) * Triangle.A.P;
-        T->B.P = YRotate(t) * Triangle.B.P;
-        T->C.P = YRotate(t) * Triangle.C.P;
-        
-    }
-
     //DrawFigures(Triangles, TriangleCount);
     DrawFigures(Points, PointCount);
-    int SpherePointCount = sizeof(Sphere)/sizeof(point);
-    DrawFigures(Sphere, 20);
+    DrawFigures(Sphere->Vertices, Sphere->VertexCount);
 }

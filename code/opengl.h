@@ -68,6 +68,8 @@ typedef void type_glUniform2f (GLint location, GLfloat v0, GLfloat v1);
 typedef void type_glUniform3f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
 typedef void type_glUniform4f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 typedef void type_glGenerateMipmap (GLenum target);
+typedef void type_glUniformMatrix3fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+typedef void type_glUniformMatrix4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 
 #define OpenGLFunction(name) type_##name *##name;
 #define GetOpenGLFuncAddress(name) name = (type_##name *)wglGetProcAddress(#name);
@@ -98,6 +100,8 @@ OpenGLFunction(glUniform2f)
 OpenGLFunction(glUniform3f)
 OpenGLFunction(glUniform4f)
 OpenGLFunction(glGenerateMipmap)
+OpenGLFunction(glUniformMatrix3fv)
+OpenGLFunction(glUniformMatrix4fv)
 
 static void
 AssignOpenGLFunctions(type_wglGetProcAddress *wglGetProcAddress)
@@ -127,4 +131,6 @@ AssignOpenGLFunctions(type_wglGetProcAddress *wglGetProcAddress)
     GetOpenGLFuncAddress(glUniform3f)
     GetOpenGLFuncAddress(glUniform4f)
     GetOpenGLFuncAddressEXT(glGenerateMipmap)
+    GetOpenGLFuncAddress(glUniformMatrix3fv)
+    GetOpenGLFuncAddress(glUniformMatrix4fv)
 }

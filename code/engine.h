@@ -1,9 +1,18 @@
 #pragma once
+#include "types.h"
+
 GLuint VBO;
 GLuint Program = 0;
 GLint Position;
 GLint Color;
-GLint RotationMatrix;
+GLint Model;
+GLint View;
+GLint Projection;
+
+float XAxisRotationAngle;
+float YAxisRotationAngle;
+
+//m4 ViewMatrix;
 
 union vertex
 {
@@ -26,25 +35,45 @@ struct point
     vertex A;
 };
 
-triangle Triangle =
+struct line
 {
-    -0.5f, -0.5f, 0.0f,  
-    0.5f, -0.5f, 0.0f, 
-    0.0f,  0.5f, 0.0f, 
+    vertex A;
+    vertex B;
 };
 
-point *Points;
-int PointCount;
-
-struct model
+struct polygon_mesh
 {
-    vertex *Vertices;
+    triangle *Triangles;
     int *Indices;
 
     int IndexCount;
-    int VertexCount;
+    int TriangleCount;
 };
 
 arena PersistentArena;
 
-model *Sphere;
+polygon_mesh *Sphere;
+polygon_mesh *Thorus;
+
+point *Points;
+int PointCount;
+
+
+m4 Identity =
+{
+    V4(1, 0, 0, 0),
+    V4(0, 1, 0, 0),
+    V4(0, 0, 1, 0),
+    V4(0, 0, 0, 1)
+};
+    
+static triangle
+Triangle(vertex A, vertex B, vertex C)
+{
+    triangle Result = {A, B, C};
+    return(Result);
+}
+
+input_state Input;
+float LeftOffset;
+float UpOffset;

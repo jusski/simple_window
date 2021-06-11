@@ -4,8 +4,6 @@
 #define WINGDIAPI __declspec(dllimport)
 #include <gl/gl.h>
 
-typedef void* (type_wglGetProcAddress)(const char *);
-
 typedef signed long long int GLsizeiptr;
 typedef char GLchar;
 
@@ -71,7 +69,7 @@ typedef void type_glGenerateMipmap (GLenum target);
 typedef void type_glUniformMatrix3fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 typedef void type_glUniformMatrix4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 
-#define OpenGLFunction(name) type_##name *##name;
+#define OpenGLFunction(name) type_##name *name;
 #define GetOpenGLFuncAddress(name) name = (type_##name *)wglGetProcAddress(#name);
 #define GetOpenGLFuncAddressEXT(name) name = (type_##name *)wglGetProcAddress(#name"EXT");
 

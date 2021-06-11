@@ -1,9 +1,12 @@
 #version 110
 
-attribute vec3 aPosition;
-uniform mat3 RotationMatrix;
+attribute vec4 aPosition;
+uniform mat4 Model;
+uniform mat4 View;
+uniform mat4 Projection;
 
 void main()
 {
-    gl_Position = vec4(RotationMatrix * aPosition, 1.0);
+    mat4 MVP = Projection * View * Model;
+    gl_Position = View * Model * aPosition;
 }

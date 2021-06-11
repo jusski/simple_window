@@ -4,106 +4,49 @@
 
 #include "platform.h"
 #include "opengl.cpp"
-#include "engine.h"
 #include "math.h"
-//#include "sphere.inl"
+#include "engine.h"
 
-static char *
-ReadShader(const char *Path)
+static m4 LookAt(v3 CameraPosition, v3 CameraDirection)
 {
-    char *Result = 0;
+    v3 ZAxis = NOZ(-1.0f * CameraDirection);
+    v3 YAxis = NOZ(Cross(ZAxis, V3(1, 0 , 0)));
+    v3 XAxis = NOZ(Cross(YAxis, ZAxis));
 
-    FILE *FileHandle = fopen(Path, "rb");
-    if (FileHandle)
-    {
-        long FileSize;
-        fseek(FileHandle, 0, SEEK_END);
-        FileSize = ftell(FileHandle);
-        fseek(FileHandle, 0, SEEK_SET);
+    m4 Rotation = Rows(V4(XAxis, 0),
+                       V4(YAxis, 0),
+                       V4(ZAxis, 0),
+                       V4(0,0,0, 1));
 
-        Result = (char *)malloc(FileSize + 1);
-        if ((fread(Result, FileSize, 1, FileHandle)) != 1)
-        {
-            __debugbreak();
-            Result = 0;
-        }
-
-        Result[FileSize] = 0;
-        fclose(FileHandle);    
-    }
-    else
-    {
-        fprintf(stderr, "[ERROR]: File not found: %s\n", Path);
-    }
-
-    return(Result);
-}
-
-
-static GLuint
-CreateShader(GLint ShaderType, const char *ShaderPath)
-{
-    GLuint Result = 0;
-
-    char *ShaderSource = ReadShader(ShaderPath);
-    if(ShaderSource)
-    {
-        GLuint VertexShader;
-        VertexShader = glCreateShader(ShaderType);
-
-        glShaderSource(VertexShader, 1, &ShaderSource, 0);
-        glCompileShader(VertexShader);
-
-        int  Success;
-        glGetShaderiv(VertexShader, GL_COMPILE_STATUS, &Success);
+    v3 P = -1.0f * CameraPosition;
+    m4 Translation = Columns(V4(1, 0, 0, 0),
+                             V4(0, 1, 0, 0),
+                             V4(0, 0, 1, 0),
+                             V4(P, 1));
     
-        if(Success)
-        {
-            Result = VertexShader;
-        }
-        else
-        {
-            char InfoLog[512];
-            glGetShaderInfoLog(VertexShader, sizeof(InfoLog), 0, InfoLog);
-            char *Type = (ShaderType == GL_VERTEX_SHADER) ? "VERTEX" : "FRAGMENT";
-            fprintf(stderr, "ERROR: %s::SHADER::COMPILATION_FAILED\n%s\n", Type, InfoLog);
-        }
-        free(ShaderSource);
-    }
+    m4 Result = Rotation * Translation;
+
     return(Result);
 }
 
-static GLuint
-CreateOpenGLProgram()
+static m4 LookAt(v3 CameraPosition, v3 CameraDirection, v3 Up)
 {
-    GLuint Result = 0;
+    v3 ZAxis = NOZ(-1.0f * CameraDirection);
+    v3 XAxis = NOZ(Cross(Up, ZAxis));
+    v3 YAxis = NOZ(Cross(ZAxis, XAxis));
 
-    GLuint VertexShader = CreateShader(GL_VERTEX_SHADER, "../code/shaders/vertex.vs");
-    GLuint FragmentShader = CreateShader(GL_FRAGMENT_SHADER, "../code/shaders/fragment.fs");
+    m4 Rotation = Rows(V4(XAxis, 0),
+                       V4(YAxis, 0),
+                       V4(ZAxis, 0),
+                       V4(0,0,0, 1));
 
-    Program = glCreateProgram();
-    glAttachShader(Program, VertexShader);
-    glAttachShader(Program, FragmentShader);
-    glLinkProgram(Program);
-
-    int Success;
-    glGetProgramiv(Program, GL_LINK_STATUS, &Success);
-    if(Success)
-    {
-        Result = Program;
-        Position = glGetAttribLocation(Program, "aPosition");
-        //Color = glGetAttribLocation(Program, "aColor");
-        RotationMatrix = glGetUniformLocation(Program, "RotationMatrix");
-        
-        glDeleteShader(VertexShader);
-        glDeleteShader(FragmentShader);
-    }
-    else
-    {
-        char InfoLog[512];
-        glGetProgramInfoLog(Program, sizeof(InfoLog), 0, InfoLog);
-        fprintf(stderr, "ERROR: PROGRAM::LINK_FAILED\n%s\n", InfoLog);
-    }
+    v3 P = -1.0f * CameraPosition;
+    m4 Translation = Columns(V4(1, 0, 0, 0),
+                             V4(0, 1, 0, 0),
+                             V4(0, 0, 1, 0),
+                             V4(P, 1));
+    
+    m4 Result = Rotation * Translation;
 
     return(Result);
 }
@@ -122,40 +65,12 @@ InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
 }
 
 static void
-DrawFigures(triangle *Figures, int Count)
+DrawPrimitives(triangle *Triangles, int Count)
 {
     glUseProgram(Program);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle) * Count, Figures, GL_STREAM_DRAW);
-    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(vertex), (void*)offsetof(vertex, P));
-    glEnableVertexAttribArray(Position);
-
-    glDrawArrays(GL_TRIANGLES, 0, 3 * Count);
-}
-
-static void
-DrawFigures(point *Figures, int Count)
-{
-    glUseProgram(Program);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(point) * Count, Figures, GL_STREAM_DRAW);
-    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(vertex), (void*)offsetof(vertex, P));
-    glEnableVertexAttribArray(Position);
-    
-    glDrawArrays(GL_POINTS, 0, Count);
-}
-
-static void
-DrawFigures(vertex *Figures, int Count)
-{
-    glUseProgram(Program);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * Count, Figures, GL_STREAM_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(triangle) * Count, Triangles, GL_STREAM_DRAW);
     glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
                           sizeof(vertex), (void*)offsetof(vertex, P));
     glEnableVertexAttribArray(Position);
@@ -163,15 +78,87 @@ DrawFigures(vertex *Figures, int Count)
     static float Time = 0.0f;
     Time += 0.01f;
     
-    m3 Rotation = YRotate(Time);
-    glUniformMatrix3fv(RotationMatrix, 1, GL_TRUE, (GLfloat *)Rotation.E);
+    //m3 Rotation = Scale(0.3f) * YRotate(XAxisRotationAngle) * XRotate(YAxisRotationAngle);
+
+    m4 ModelMatrix = XTranslate(0) * Scale(0.3f);
+    glUniformMatrix4fv(Model, 1, GL_TRUE, (GLfloat *)ModelMatrix.E);
+#if 0
+    v3 CameraPosition = 0.9f * V3(sinf(Time), 0, cosf(Time));
+    v3 Up = V3(sinf(Time), cosf(Time), 0);
     
-    glDrawArrays(GL_TRIANGLES, 0, Count);
+    v3 CameraDirection = V3(0, 0, 0) - CameraPosition;
+#else
+    v3 CameraPosition = 0.9f * V3(LeftOffset, UpOffset, 1);
+    v3 Up = V3(0, 1, 0);
+    v3 CameraDirection = V3(0, 0, -1);
+#endif
+
+    
+    m4 ViewMatrix = LookAt(CameraPosition, CameraDirection, Up);
+    //ViewMatrix = LookAt(CameraPosition, CameraDirection);
+    glUniformMatrix4fv(View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
+    
+    glDrawArrays(GL_TRIANGLES, 0, Count * 3);
+    
+}
+
+static void
+DrawPrimitives(point *Primitives, int Count)
+{
+    glUseProgram(Program);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(point) * Count, Primitives, GL_STREAM_DRAW);
+    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertex), (void*)offsetof(vertex, P));
+    glEnableVertexAttribArray(Position);
+    
+    static float Time = 0.0f;
+    Time += 0.01f;
+  
+    m4 ModelMatrix = XTranslate(LeftOffset) * Scale(0.3f);
+    glUniformMatrix4fv(Model, 1, GL_TRUE, (GLfloat *)Identity.E);
+
+    v3 CameraPosition = 0.8f * V3(sinf(Time), 0, cosf(Time));
+    v3 CameraDirection = V3(0, 0, 0) - CameraPosition;
+    m4 ViewMatrix = LookAt(CameraPosition, CameraDirection);
+
+    glUniformMatrix4fv(View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
+
+    glDrawArrays(GL_POINTS, 0, Count);
+}
+
+static void
+DrawPolygonMesh(polygon_mesh *PolygonMesh)
+{
+    DrawPrimitives(PolygonMesh->Triangles, PolygonMesh->TriangleCount);
+    
 }
 
 extern "C" __declspec(dllexport) void
-Engine()
+Engine(input_state *InputState, float XAngle, float YAngle)
 {
+    XAxisRotationAngle = XAngle; 
+    YAxisRotationAngle = YAngle; 
+
+    Input = *InputState;
+    if(Input.Keyboard.Right)
+    {
+        LeftOffset += 0.1f;
+    }
+    if(Input.Keyboard.Left)
+    {
+        LeftOffset -= 0.1f;
+    }
+    if(Input.Keyboard.Up)
+    {
+        UpOffset += 0.1f;
+    }
+    if(Input.Keyboard.Down)
+    {
+        UpOffset -= 0.1f;
+    }
+    
     arena *Arena = &PersistentArena;
     if(!Program)
     {
@@ -180,6 +167,8 @@ Engine()
         Arena->MaxIndex = Megabytes(3);
         
         Sphere = LoadModel(Arena, "../code/models/sphere.stl");
+        Thorus = LoadModel(Arena, "../code/models/thorus.stl");
+
         Program = CreateOpenGLProgram();
 
         glGenBuffers(1, &VBO);
@@ -187,8 +176,7 @@ Engine()
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         
         PointCount = 1;
-        Points = (point *)malloc(sizeof(point) * PointCount);
-        
+        Points = PushArray(Arena, point, PointCount);
     }
 
     glViewport(0, 0, 500, 500);
@@ -199,7 +187,7 @@ Engine()
     static float Time = 0.0f;
     Time += 0.05f;
     
-    //DrawFigures(Triangles, TriangleCount);
-    DrawFigures(Points, PointCount);
-    DrawFigures(Sphere->Vertices, Sphere->VertexCount);
+    DrawPrimitives(Points, PointCount);
+    DrawPolygonMesh(Sphere);
+    DrawPolygonMesh(Thorus);
 }

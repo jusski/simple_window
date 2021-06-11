@@ -1,9 +1,6 @@
 #include "pch.h"
+#include "platform.h"
 //#include "engine.cpp"
-
-typedef void *(type_wglGetProcAddress)(const char *);
-typedef void (type_InitializeOpenGL)(type_wglGetProcAddress *);
-typedef void (type_Engine)(void);
 
 type_Engine *Engine;
 type_InitializeOpenGL *InitializeOpenGL;
@@ -11,6 +8,12 @@ type_InitializeOpenGL *InitializeOpenGL;
 static HDC DeviceContext;
 static volatile bool Running = true;
 static volatile bool Paused = false;
+static volatile float XAngle = 0.0f;
+static volatile float YAngle = 0.0f;
+
+static int LastXCoordinate = 0;
+static int LastYCoordinate = 0;
+static bool MouseLeftClick = false;
 
 static void
 Win32InitializeOpenGL()
@@ -64,10 +67,35 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch(msg)
     {
-        case(WM_NCHITTEST): {
+        #if 0
+        case(WM_NCHITTEST):
+        {
             LRESULT Hit = DefWindowProc(hwnd, msg, wParam, lParam);
             if (Hit == HTCLIENT) Hit = HTCAPTION;
             return Hit;
+        } break;
+        #endif
+        case(WM_LBUTTONUP):
+        {
+            MouseLeftClick = false;
+        } break;
+        case(WM_LBUTTONDOWN):
+        {
+            MouseLeftClick = true;
+            LastXCoordinate = lParam & 0xFFFF;
+            LastYCoordinate = (lParam >> 16) & 0xFFFF;
+        } break;
+        case(WM_MOUSEMOVE):
+        {
+            if(MouseLeftClick)
+            {
+                int XCoordinate = lParam & 0xFFFF;
+                int YCoordinate = (lParam >> 16) & 0xFFFF;
+                XAngle += 0.01f*(XCoordinate - LastXCoordinate);
+                YAngle += 0.01f*(YCoordinate - LastYCoordinate);
+                LastXCoordinate = XCoordinate;
+                LastYCoordinate = YCoordinate;
+            }
         } break;
         case(WM_KEYDOWN):
         {
@@ -103,6 +131,51 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+static void
+ProcessKeyboardInput(input_state *InputState)
+{
+    MSG Message;
+    while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE) > 0)
+    {
+        switch(Message.message)
+        {
+            case(WM_KEYUP):
+            case(WM_KEYDOWN):
+            case(WM_SYSKEYDOWN):
+            case(WM_SYSKEYUP):
+            {
+                unsigned int KeyCode = (unsigned int)Message.wParam;
+                bool IsDown = ((Message.lParam & (1 << 31)) == 0);
+                //bool WasDown =  ((Message.lParam & (1 << 30)) != 0);
+           
+                if(KeyCode == 'K' && IsDown)
+                {
+                    InputState->Keyboard.Left = true;
+                }
+                if(KeyCode == 'O' && IsDown)
+                {
+                    InputState->Keyboard.Up = true;
+                }
+                if(KeyCode == 'L' && IsDown)
+                {
+                    InputState->Keyboard.Down = true;
+                }
+                if(KeyCode == VK_OEM_1 && IsDown)
+                {
+                    InputState->Keyboard.Right = true;
+                }    
+                
+                
+            } 
+            default:
+            {
+                TranslateMessage(&Message);
+                DispatchMessage(&Message);        
+            }
+        }
+        
+    }
+}
 int main()
 {
     HMODULE Library = LoadLibrary("engine.dll");
@@ -150,17 +223,14 @@ int main()
         
         while(Running)
         {
-            MSG Msg;
-            if(PeekMessage(&Msg, 0, 0, 0, PM_REMOVE) > 0)
-            {
-                TranslateMessage(&Msg);
-                DispatchMessage(&Msg);
-            }
+            input_state InputState = {};
+            ProcessKeyboardInput(&InputState);
             if(!Paused)
             {
-                Engine();
+                Engine(&InputState, XAngle, YAngle);
                 Sleep(30);
-                SwapBuffers(DeviceContext);    
+                SwapBuffers(DeviceContext);
+                
             }
         }
     }

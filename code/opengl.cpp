@@ -8,6 +8,13 @@ PushVertex(arena *Arena, vertex Value)
     *Vertex = Value;
 }
 
+static void
+PushTriangle(arena *Arena, triangle Value)
+{
+    triangle *T = PushStruct(Arena, triangle);
+    *T = Value;
+}
+
 static char *
 ReadWholeFile(char *Path)
 {
@@ -288,7 +295,7 @@ struct vertex_stl
 #pragma pack(pop)
 
 static int
-LoadVerticesSTL(arena *Arena, unsigned char *FileContents)
+LoadTrianglesSTL(arena *Arena, unsigned char *FileContents)
 {
     unsigned char *Cursor = FileContents;
     Cursor += 80; // Skip Header
@@ -299,25 +306,128 @@ LoadVerticesSTL(arena *Arena, unsigned char *FileContents)
     vertex_stl *VertexSTL = (vertex_stl *)Cursor;
     for(int Count = 0; Count < TriangleCount; ++Count)
     {
-        PushVertex(Arena, VertexSTL->A);
-        PushVertex(Arena, VertexSTL->B);
-        PushVertex(Arena, VertexSTL->C);
+        triangle T = Triangle(VertexSTL->A, VertexSTL->B, VertexSTL->C);
+        PushTriangle(Arena, T);
         VertexSTL++;
     }
 
-    return(TriangleCount * 3);
+    return(TriangleCount);
 }
 
-static model *
+static polygon_mesh *
 LoadModel(arena *Arena, char *Path)
 {
     unsigned char *FileContents = ReadWholeFileBinary(Path);
 
-    model *Result = PushStruct(Arena, model);
-    Result->Vertices = (vertex *)PushSize(Arena, 0);
-    Result->VertexCount = LoadVerticesSTL(Arena, FileContents);
+    polygon_mesh *Result = PushStruct(Arena, polygon_mesh);
+    Result->Triangles = (triangle *)PushSize(Arena, 0);
+    Result->TriangleCount = LoadTrianglesSTL(Arena, FileContents);
     
     
     free(FileContents);
+    return(Result);
+}
+
+
+static char *
+ReadShader(const char *Path)
+{
+    char *Result = 0;
+
+    FILE *FileHandle = fopen(Path, "rb");
+    if (FileHandle)
+    {
+        long FileSize;
+        fseek(FileHandle, 0, SEEK_END);
+        FileSize = ftell(FileHandle);
+        fseek(FileHandle, 0, SEEK_SET);
+
+        Result = (char *)malloc(FileSize + 1);
+        if ((fread(Result, FileSize, 1, FileHandle)) != 1)
+        {
+            __debugbreak();
+            Result = 0;
+        }
+
+        Result[FileSize] = 0;
+        fclose(FileHandle);    
+    }
+    else
+    {
+        fprintf(stderr, "[ERROR]: File not found: %s\n", Path);
+    }
+
+    return(Result);
+}
+
+
+static GLuint
+CreateShader(GLint ShaderType, const char *ShaderPath)
+{
+    GLuint Result = 0;
+
+    char *ShaderSource = ReadShader(ShaderPath);
+    if(ShaderSource)
+    {
+        GLuint VertexShader;
+        VertexShader = glCreateShader(ShaderType);
+
+        glShaderSource(VertexShader, 1, &ShaderSource, 0);
+        glCompileShader(VertexShader);
+
+        int  Success;
+        glGetShaderiv(VertexShader, GL_COMPILE_STATUS, &Success);
+    
+        if(Success)
+        {
+            Result = VertexShader;
+        }
+        else
+        {
+            char InfoLog[512];
+            glGetShaderInfoLog(VertexShader, sizeof(InfoLog), 0, InfoLog);
+            const char *Type = (ShaderType == GL_VERTEX_SHADER) ? "VERTEX" : "FRAGMENT";
+            fprintf(stderr, "ERROR: %s::SHADER::COMPILATION_FAILED\n%s\n", Type, InfoLog);
+        }
+        free(ShaderSource);
+    }
+    return(Result);
+}
+
+static GLuint
+CreateOpenGLProgram()
+{
+    GLuint Result = 0;
+
+    GLuint VertexShader = CreateShader(GL_VERTEX_SHADER, "../code/shaders/vertex.vs");
+    GLuint FragmentShader = CreateShader(GL_FRAGMENT_SHADER, "../code/shaders/fragment.fs");
+
+    Program = glCreateProgram();
+    glAttachShader(Program, VertexShader);
+    glAttachShader(Program, FragmentShader);
+    glLinkProgram(Program);
+
+    int Success;
+    glGetProgramiv(Program, GL_LINK_STATUS, &Success);
+    if(Success)
+    {
+        Result = Program;
+        Position = glGetAttribLocation(Program, "aPosition");
+        //Color = glGetAttribLocation(Program, "aColor");
+
+        Model = glGetUniformLocation(Program, "Model");
+        View = glGetUniformLocation(Program, "View");
+        Projection = glGetUniformLocation(Program, "Projection");
+        
+        glDeleteShader(VertexShader);
+        glDeleteShader(FragmentShader);
+    }
+    else
+    {
+        char InfoLog[512];
+        glGetProgramInfoLog(Program, sizeof(InfoLog), 0, InfoLog);
+        fprintf(stderr, "ERROR: PROGRAM::LINK_FAILED\n%s\n", InfoLog);
+    }
+
     return(Result);
 }

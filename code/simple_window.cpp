@@ -1,19 +1,7 @@
 #include "pch.h"
 #include "platform.h"
 //#include "engine.cpp"
-
-type_Engine *Engine;
-type_InitializeOpenGL *InitializeOpenGL;
-    
-static HDC DeviceContext;
-static volatile bool Running = true;
-static volatile bool Paused = false;
-static volatile float XAngle = 0.0f;
-static volatile float YAngle = 0.0f;
-
-static int LastXCoordinate = 0;
-static int LastYCoordinate = 0;
-static bool MouseLeftClick = false;
+#include "simple_window.h"
 
 static void
 Win32InitializeOpenGL()
@@ -91,30 +79,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             {
                 int XCoordinate = lParam & 0xFFFF;
                 int YCoordinate = (lParam >> 16) & 0xFFFF;
-                XAngle += 0.01f*(XCoordinate - LastXCoordinate);
-                YAngle += 0.01f*(YCoordinate - LastYCoordinate);
+                XMouseOffset += 0.01f*(XCoordinate - LastXCoordinate);
+                YMouseOffset += 0.01f*(LastYCoordinate - YCoordinate);
                 LastXCoordinate = XCoordinate;
                 LastYCoordinate = YCoordinate;
             }
         } break;
-        case(WM_KEYDOWN):
-        {
-            if (wParam == VK_ESCAPE)
-            {
-                Running = false;
-            }
-            if (wParam == VK_SPACE)
-            {
-                Paused = true;
-            }
-        } break;
-        case(WM_KEYUP):
-        {
-            if(wParam == VK_SPACE)
-            {
-                Paused = false;
-            }
-        } break;
+            
         case(WM_CLOSE):
         {
             DestroyWindow(hwnd);
@@ -135,38 +106,74 @@ static void
 ProcessKeyboardInput(input_state *InputState)
 {
     MSG Message;
-    while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE) > 0)
+    while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
     {
         switch(Message.message)
         {
             case(WM_KEYUP):
-            case(WM_KEYDOWN):
-            case(WM_SYSKEYDOWN):
-            case(WM_SYSKEYUP):
             {
                 unsigned int KeyCode = (unsigned int)Message.wParam;
-                bool IsDown = ((Message.lParam & (1 << 31)) == 0);
+                //bool IsDown = ((Message.lParam & (1 << 31)) == 0);
                 //bool WasDown =  ((Message.lParam & (1 << 30)) != 0);
-           
-                if(KeyCode == 'K' && IsDown)
+
+                if(KeyCode == 'K')
+                {
+                    InputState->Keyboard.Left = false;
+                }
+                if(KeyCode == 'O')
+                {
+                    InputState->Keyboard.Up = false;
+                }
+                if(KeyCode == 'L')
+                {
+                    InputState->Keyboard.Down = false;
+                }
+                if(KeyCode == VK_OEM_1)
+                {
+                    InputState->Keyboard.Right = false;
+                }
+                if(KeyCode == VK_SPACE)
+                {
+                    Paused = false;
+                }
+            } break; 
+            case(WM_KEYDOWN):
+            {
+                unsigned int KeyCode = (unsigned int)Message.wParam;
+                //bool IsDown = ((Message.lParam & (1 << 31)) == 0);
+                //bool WasDown =  ((Message.lParam & (1 << 30)) != 0);
+
+                if(KeyCode == 'K')
                 {
                     InputState->Keyboard.Left = true;
                 }
-                if(KeyCode == 'O' && IsDown)
+                if(KeyCode == 'O')
                 {
                     InputState->Keyboard.Up = true;
                 }
-                if(KeyCode == 'L' && IsDown)
+                if(KeyCode == 'L')
                 {
                     InputState->Keyboard.Down = true;
                 }
-                if(KeyCode == VK_OEM_1 && IsDown)
+                if(KeyCode == VK_OEM_1)
                 {
                     InputState->Keyboard.Right = true;
                 }    
                 
+                if (KeyCode == VK_ESCAPE)
+                {
+                    Running = false;
+                }
+                if (KeyCode == VK_SPACE)
+                {
+                    Paused = true;
+                }
+                if (KeyCode == 'P')
+                {
+                    InputState->PolygonMode = true;
+                }
                 
-            } 
+            } break;
             default:
             {
                 TranslateMessage(&Message);
@@ -179,8 +186,8 @@ ProcessKeyboardInput(input_state *InputState)
 int main()
 {
     HMODULE Library = LoadLibrary("engine.dll");
-    Engine = (type_Engine *)GetProcAddress(Library, "Engine");
-    InitializeOpenGL = (type_InitializeOpenGL *)GetProcAddress(Library, "InitializeOpenGL");
+    GameLoop = (type_game_loop *)GetProcAddress(Library, "GameLoop");
+    InitializeOpenGL = (type_initialize_opengl *)GetProcAddress(Library, "InitializeOpenGL");
 
     WNDCLASSEX WindowClass = {};
     HWND Window;
@@ -202,7 +209,7 @@ int main()
     {
         MessageBox(NULL, "Window Registration Failed!", "Error!",
                    MB_ICONEXCLAMATION | MB_OK);
-        return 0;
+        return(0);
     }
 
     Window = CreateWindowEx(0,
@@ -210,7 +217,6 @@ int main()
                             "Simple OpenGL Window",
                             WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT, 500, 500,
                             NULL, NULL, GetModuleHandle(0), NULL);
-    SetWindowLong(Window, GWL_EXSTYLE, 0);
     if(Window)
     {
         printf("Creating Window.\n");
@@ -220,17 +226,23 @@ int main()
         DeviceContext = GetDC(Window);
         Win32InitializeOpenGL();
         InitializeOpenGL((type_wglGetProcAddress *)GetProcAddress(LoadLibrary("opengl32.dll"), "wglGetProcAddress"));
-        
+
+        ShowCursor(false);
+        RECT Clip;
+        GetWindowRect(Window, &Clip);
+        ClipCursor(&Clip);
+            
         while(Running)
         {
             input_state InputState = {};
             ProcessKeyboardInput(&InputState);
+            InputState.Mouse.XOffset = XMouseOffset;
+            InputState.Mouse.YOffset = YMouseOffset;
             if(!Paused)
             {
-                Engine(&InputState, XAngle, YAngle);
+                GameLoop(&InputState);
                 Sleep(30);
                 SwapBuffers(DeviceContext);
-                
             }
         }
     }

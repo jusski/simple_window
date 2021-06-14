@@ -7,49 +7,6 @@
 #include "math.h"
 #include "engine.h"
 
-static m4 LookAt(v3 CameraPosition, v3 CameraDirection)
-{
-    v3 ZAxis = NOZ(-1.0f * CameraDirection);
-    v3 YAxis = NOZ(Cross(ZAxis, V3(1, 0 , 0)));
-    v3 XAxis = NOZ(Cross(YAxis, ZAxis));
-
-    m4 Rotation = Rows(V4(XAxis, 0),
-                       V4(YAxis, 0),
-                       V4(ZAxis, 0),
-                       V4(0,0,0, 1));
-
-    v3 P = -1.0f * CameraPosition;
-    m4 Translation = Columns(V4(1, 0, 0, 0),
-                             V4(0, 1, 0, 0),
-                             V4(0, 0, 1, 0),
-                             V4(P, 1));
-    
-    m4 Result = Rotation * Translation;
-
-    return(Result);
-}
-
-static m4 LookAt(v3 CameraPosition, v3 CameraDirection, v3 Up)
-{
-    v3 ZAxis = NOZ(-1.0f * CameraDirection);
-    v3 XAxis = NOZ(Cross(Up, ZAxis));
-    v3 YAxis = NOZ(Cross(ZAxis, XAxis));
-
-    m4 Rotation = Rows(V4(XAxis, 0),
-                       V4(YAxis, 0),
-                       V4(ZAxis, 0),
-                       V4(0,0,0, 1));
-
-    v3 P = -1.0f * CameraPosition;
-    m4 Translation = Columns(V4(1, 0, 0, 0),
-                             V4(0, 1, 0, 0),
-                             V4(0, 0, 1, 0),
-                             V4(P, 1));
-    
-    m4 Result = Rotation * Translation;
-
-    return(Result);
-}
 
 extern "C" __declspec(dllexport) void
 InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
@@ -61,133 +18,188 @@ InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
     GL_GETINTEGERV(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS);
     GL_GETINTEGERV(GL_MAX_DRAW_BUFFERS);
     glPointSize(10);
+    glEnable(GL_DEPTH_TEST); 
   
 }
-
+    
 static void
-DrawPrimitives(triangle *Triangles, int Count)
+DrawPrimitives(opengl_program *OpenGLProgram, triangle *Triangles, int Count, camera *Camera)
 {
-    glUseProgram(Program);
+    glUseProgram(OpenGLProgram->Program);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(triangle) * Count, Triangles, GL_STREAM_DRAW);
-    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(vertex), (void*)offsetof(vertex, P));
-    glEnableVertexAttribArray(Position);
-
-    static float Time = 0.0f;
-    Time += 0.01f;
-    
-    //m3 Rotation = Scale(0.3f) * YRotate(XAxisRotationAngle) * XRotate(YAxisRotationAngle);
+    glVertexAttribPointer(OpenGLProgram->Position, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertex), (void*)offsetof(vertex, Position));
+    glEnableVertexAttribArray(OpenGLProgram->Position);
 
     m4 ModelMatrix = XTranslate(0) * Scale(0.3f);
-    glUniformMatrix4fv(Model, 1, GL_TRUE, (GLfloat *)ModelMatrix.E);
-#if 0
-    v3 CameraPosition = 0.9f * V3(sinf(Time), 0, cosf(Time));
-    v3 Up = V3(sinf(Time), cosf(Time), 0);
+    glUniformMatrix4fv(OpenGLProgram->Model, 1, GL_TRUE, (GLfloat *)ModelMatrix.E);
     
-    v3 CameraDirection = V3(0, 0, 0) - CameraPosition;
-#else
-    v3 CameraPosition = 0.9f * V3(LeftOffset, UpOffset, 1);
-    v3 Up = V3(0, 1, 0);
-    v3 CameraDirection = V3(0, 0, -1);
-#endif
+    m4 ViewMatrix = LookAt(Camera->Position, Camera->Direction, Camera->UpDirection);
 
-    
-    m4 ViewMatrix = LookAt(CameraPosition, CameraDirection, Up);
-    //ViewMatrix = LookAt(CameraPosition, CameraDirection);
-    glUniformMatrix4fv(View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
+    glUniformMatrix4fv(OpenGLProgram->View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
     
     glDrawArrays(GL_TRIANGLES, 0, Count * 3);
     
 }
 
 static void
-DrawPrimitives(point *Primitives, int Count)
+DrawPrimitives(opengl_program *OpenGLProgram, point *Primitives, int Count, camera *Camera)
 {
-    glUseProgram(Program);
+    glUseProgram(OpenGLProgram->Program);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(point) * Count, Primitives, GL_STREAM_DRAW);
-    glVertexAttribPointer(Position, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(vertex), (void*)offsetof(vertex, P));
-    glEnableVertexAttribArray(Position);
+    glVertexAttribPointer(OpenGLProgram->Position, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(vertex), (void*)offsetof(vertex, Position));
+    glEnableVertexAttribArray(OpenGLProgram->Position);
     
-    static float Time = 0.0f;
-    Time += 0.01f;
-  
-    m4 ModelMatrix = XTranslate(LeftOffset) * Scale(0.3f);
-    glUniformMatrix4fv(Model, 1, GL_TRUE, (GLfloat *)Identity.E);
+    glUniformMatrix4fv(OpenGLProgram->Model, 1, GL_TRUE, (GLfloat *)Identity.E);
 
-    v3 CameraPosition = 0.8f * V3(sinf(Time), 0, cosf(Time));
-    v3 CameraDirection = V3(0, 0, 0) - CameraPosition;
-    m4 ViewMatrix = LookAt(CameraPosition, CameraDirection);
+    m4 ViewMatrix = LookAt(Camera->Position, Camera->Direction, Camera->UpDirection);
+    glUniformMatrix4fv(OpenGLProgram->View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
 
-    glUniformMatrix4fv(View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
-
+    glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Identity.E);
+    
     glDrawArrays(GL_POINTS, 0, Count);
 }
 
 static void
-DrawPolygonMesh(polygon_mesh *PolygonMesh)
+DrawPoint(opengl_program *OpenGLProgram, v3 Point, camera *Camera)
 {
-    DrawPrimitives(PolygonMesh->Triangles, PolygonMesh->TriangleCount);
+    Points[0].A.Position = Point;
+    DrawPrimitives(OpenGLProgram, Points, 1, Camera);
+}
+
+static void
+DrawPolygonMesh(opengl_program *OpenGLProgram, polygon_mesh *PolygonMesh, camera *Camera,
+                m4 Model = Identity, v3 Color = BLUE)
+{
+    glUseProgram(OpenGLProgram->Program);
+
+    vertex *Vertices = PolygonMesh->Vertices;
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * PolygonMesh->VertexCount,
+                 Vertices, GL_STATIC_DRAW);
+    //Position
+    glVertexAttribPointer(OpenGLProgram->Position, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, Position));
+    glEnableVertexAttribArray(OpenGLProgram->Position);
+
+    //Normal
+    glVertexAttribPointer(OpenGLProgram->Normal, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, Normal));
+    glEnableVertexAttribArray(OpenGLProgram->Normal);
     
+    //Color
+    glUniform3f(OpenGLProgram->Color, Color.r, Color.g, Color.b);
+
+    //View
+    m4 ViewMatrix = LookAt(Camera->Position, Camera->Direction, Camera->UpDirection);
+    glUniformMatrix4fv(OpenGLProgram->View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
+
+    //Model
+    glUniformMatrix4fv(OpenGLProgram->Model, 1, GL_TRUE, (GLfloat *)Model.E);
+
+    //Projection
+#if 1
+    glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Identity.E);
+#else
+    glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Projection.E);
+#endif
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * PolygonMesh->IndexCount,
+                 PolygonMesh->Indices, GL_STATIC_DRAW); 
+
+    glDrawElements(GL_TRIANGLES, PolygonMesh->IndexCount, GL_UNSIGNED_INT, 0); 
+}
+
+static void
+DrawLightSource(polygon_mesh *Emiter, camera *Camera, m4 Model = Identity,
+                v3 Color = WHITE)
+{
+    DrawPolygonMesh(&EmiterProgram, Emiter, Camera, Model, Color);
 }
 
 extern "C" __declspec(dllexport) void
-Engine(input_state *InputState, float XAngle, float YAngle)
+GameLoop(input_state *InputState)
 {
-    XAxisRotationAngle = XAngle; 
-    YAxisRotationAngle = YAngle; 
-
-    Input = *InputState;
-    if(Input.Keyboard.Right)
-    {
-        LeftOffset += 0.1f;
-    }
-    if(Input.Keyboard.Left)
-    {
-        LeftOffset -= 0.1f;
-    }
-    if(Input.Keyboard.Up)
-    {
-        UpOffset += 0.1f;
-    }
-    if(Input.Keyboard.Down)
-    {
-        UpOffset -= 0.1f;
-    }
-    
     arena *Arena = &PersistentArena;
-    if(!Program)
+    if(!Initialized)
     {
         Arena->Memory = (unsigned char *)malloc(Megabytes(3));
         Arena->Index = 0;
         Arena->MaxIndex = Megabytes(3);
         
-        Sphere = LoadModel(Arena, "../code/models/sphere.stl");
-        Thorus = LoadModel(Arena, "../code/models/thorus.stl");
+        Sphere = LoadModel(Arena, "../code/models/sphere.ply");
+        //Thorus = LoadModel(Arena, "../code/models/thorus.stl");
+        Cube = LoadModel(Arena, "../code/models/cube.ply");
 
-        Program = CreateOpenGLProgram();
+        GLProgram = CreateOpenGLProgram();
+        EmiterProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/emiter.fs");
 
         glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         
         PointCount = 1;
         Points = PushArray(Arena, point, PointCount);
-    }
 
+        GameState = {};
+        
+        GameState.Camera.Position = 0.9f * V3(0, 0, 0);
+        GameState.Camera.Direction = V3(0, 0, 0);
+        GameState.Camera.UpDirection = V3(0, 1, 0);
+
+        Projection = Perspective(1, 1, 0.1, 10);
+        Initialized = true;
+     }
+
+    
+    Input = *InputState;
+    float ZCameraOffset = 0.0f;
+    float XCameraOffset = 0.0f;
+
+    if(Input.PolygonMode == true)
+    {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
+    if(Input.Keyboard.Right)
+    {
+        XCameraOffset += 0.1f;
+    }
+    if(Input.Keyboard.Left)
+    {
+        XCameraOffset -= 0.1f;
+    }
+    if(Input.Keyboard.Up)
+    {
+        ZCameraOffset -= 0.1f;
+    }
+    if(Input.Keyboard.Down)
+    {
+        ZCameraOffset += 0.1f;
+    }
+    
     glViewport(0, 0, 500, 500);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
+    camera *Camera = &GameState.Camera;
+    Camera->Direction = NOZ(V3(InputState->Mouse.XOffset, InputState->Mouse.YOffset, -1));
+    Camera->Position = Camera->Position + ZCameraOffset * Camera->Direction +
+        XCameraOffset * Cross(Camera->Direction, Camera->UpDirection);
+
+    DrawPolygonMesh(&GLProgram, &Sphere, Camera, Scale(0.1f));
+
+    m4 Model = ZTranslate(-0.5) * XTranslate(0.5) * YTranslate(0.5) * Scale(0.1f);
+    DrawLightSource(&Sphere, Camera, Model);
+
+    Model = YTranslate(-0.5) * XTranslate(-0.5) * Scale(0.1f);
+    DrawPolygonMesh(&GLProgram, &Sphere, Camera, Model, CORAL);
+
+    Model = ZTranslate(-0.5) * XTranslate(-0.5) * Scale(0.1f);
+    DrawPolygonMesh(&GLProgram, &Cube, Camera, Model, OLIVE);
+
     
-    static float Time = 0.0f;
-    Time += 0.05f;
-    
-    DrawPrimitives(Points, PointCount);
-    DrawPolygonMesh(Sphere);
-    DrawPolygonMesh(Thorus);
 }

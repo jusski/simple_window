@@ -31,6 +31,7 @@ union v3
         float _Ignore1;
         v2 yz;
     };
+    float E[3];
 };
 
 union v4

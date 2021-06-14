@@ -1,5 +1,21 @@
 #include "opengl.h"
 #include "engine.h"
+#include "math.h"
+
+m4 Identity =
+{
+    V4(1, 0, 0, 0),
+    V4(0, 1, 0, 0),
+    V4(0, 0, 1, 0),
+    V4(0, 0, 0, 1)
+};
+    
+static triangle
+Triangle(vertex A, vertex B, vertex C)
+{
+    triangle Result = {A, B, C};
+    return(Result);
+}
 
 static void
 PushVertex(arena *Arena, vertex Value)
@@ -208,8 +224,8 @@ enum parse_state
     ParseState_Reading,
 };
 
-static int
-LoadVerticesPLY(arena *Arena, char *FileContents)
+static polygon_mesh
+LoadMeshPLY(arena *Arena, char *FileContents)
 {
     Assert(StringsMatch(FileContents, "ply"));
 
@@ -218,19 +234,47 @@ LoadVerticesPLY(arena *Arena, char *FileContents)
 
     SearchForwardAndSkip(&Cursor, "element vertex");
     int VertexCount = ReadInt(&Cursor);
-    SearchForwardAndSkip(&Cursor, "end_header");
+
+    SearchForwardAndSkip(&Cursor, "element face");
+    int FaceCount = ReadInt(&Cursor);
     
+    SearchForwardAndSkip(&Cursor, "end_header");
+
+    polygon_mesh Result = {};
+    Result.Vertices = (vertex *)PushSize(Arena, 0);
+    Result.VertexCount = VertexCount;
     for(int Count = 0; Count < VertexCount; ++Count)
     {
         vertex *Vertex = PushStruct(Arena, vertex);
-        Vertex->x = ReadFloat(&Cursor);
-        Vertex->y = ReadFloat(&Cursor);
-        Vertex->z = ReadFloat(&Cursor);
+
+        Vertex->Position.x = ReadFloat(&Cursor);
+        Vertex->Position.y = ReadFloat(&Cursor);
+        Vertex->Position.z = ReadFloat(&Cursor);
+
+        Vertex->Normal.x = ReadFloat(&Cursor);
+        Vertex->Normal.y = ReadFloat(&Cursor);
+        Vertex->Normal.z = ReadFloat(&Cursor);
+
+        Vertex->TexCoord.x = ReadFloat(&Cursor);
+        Vertex->TexCoord.y = ReadFloat(&Cursor);
 
         SearchForwardAndSkip(&Cursor, "\n");
     }
 
-    return(VertexCount);
+    Result.Indices = (int *)PushSize(Arena, 0);
+    Result.IndexCount = FaceCount * 3;
+    for(int Count = 0; Count < FaceCount; ++Count)
+    {
+        ReadInt(&Cursor); // Ignored
+
+        PushInt(Arena, ReadInt(&Cursor));
+        PushInt(Arena, ReadInt(&Cursor));
+        PushInt(Arena, ReadInt(&Cursor));
+
+        SearchForwardAndSkip(&Cursor, "\n");        
+    }
+
+    return(Result);
 }
     
 static int
@@ -263,9 +307,9 @@ LoadVerticesOBJ(arena *Arena, char *FileContents)
                     Cursor += 2;
 
                     vertex *Vertex = PushStruct(Arena, vertex);
-                    Vertex->x = ReadFloat(&Cursor);
-                    Vertex->y = ReadFloat(&Cursor);
-                    Vertex->z = ReadFloat(&Cursor);
+                    Vertex->Position.x = ReadFloat(&Cursor);
+                    Vertex->Position.y = ReadFloat(&Cursor);
+                    Vertex->Position.z = ReadFloat(&Cursor);
                     VertexCount++;
 
                     State = ParseState_Reading;
@@ -314,14 +358,12 @@ LoadTrianglesSTL(arena *Arena, unsigned char *FileContents)
     return(TriangleCount);
 }
 
-static polygon_mesh *
+static polygon_mesh 
 LoadModel(arena *Arena, char *Path)
 {
-    unsigned char *FileContents = ReadWholeFileBinary(Path);
+    char *FileContents = ReadWholeFile(Path);
 
-    polygon_mesh *Result = PushStruct(Arena, polygon_mesh);
-    Result->Triangles = (triangle *)PushSize(Arena, 0);
-    Result->TriangleCount = LoadTrianglesSTL(Arena, FileContents);
+    polygon_mesh Result = LoadMeshPLY(Arena, FileContents);
     
     
     free(FileContents);
@@ -394,15 +436,15 @@ CreateShader(GLint ShaderType, const char *ShaderPath)
     return(Result);
 }
 
-static GLuint
-CreateOpenGLProgram()
+static opengl_program
+CreateOpenGLProgram(const char *VertexShaderSource, const char *FragmentShaderSource)
 {
-    GLuint Result = 0;
+    opengl_program Result = {};
 
-    GLuint VertexShader = CreateShader(GL_VERTEX_SHADER, "../code/shaders/vertex.vs");
-    GLuint FragmentShader = CreateShader(GL_FRAGMENT_SHADER, "../code/shaders/fragment.fs");
+    GLuint VertexShader = CreateShader(GL_VERTEX_SHADER, VertexShaderSource);
+    GLuint FragmentShader = CreateShader(GL_FRAGMENT_SHADER, FragmentShaderSource);
 
-    Program = glCreateProgram();
+    GLuint Program = glCreateProgram();
     glAttachShader(Program, VertexShader);
     glAttachShader(Program, FragmentShader);
     glLinkProgram(Program);
@@ -411,13 +453,16 @@ CreateOpenGLProgram()
     glGetProgramiv(Program, GL_LINK_STATUS, &Success);
     if(Success)
     {
-        Result = Program;
-        Position = glGetAttribLocation(Program, "aPosition");
-        //Color = glGetAttribLocation(Program, "aColor");
+        Result.Program = Program;
+        Result.Position = glGetAttribLocation(Program, "aPosition");
+        Result.Normal = glGetAttribLocation(Program, "aNormal");
+        Result.TexCoord = glGetAttribLocation(Program, "aTexCoord");
 
-        Model = glGetUniformLocation(Program, "Model");
-        View = glGetUniformLocation(Program, "View");
-        Projection = glGetUniformLocation(Program, "Projection");
+
+        Result.Color = glGetUniformLocation(Program, "Color");
+        Result.Model = glGetUniformLocation(Program, "Model");
+        Result.View = glGetUniformLocation(Program, "View");
+        Result.Projection = glGetUniformLocation(Program, "Projection");
         
         glDeleteShader(VertexShader);
         glDeleteShader(FragmentShader);
@@ -431,3 +476,72 @@ CreateOpenGLProgram()
 
     return(Result);
 }
+
+static opengl_program
+CreateOpenGLProgram()
+{
+    return(CreateOpenGLProgram("../code/shaders/vertex.vs",  "../code/shaders/fragment.fs"));
+}
+static m4
+LookAt(v3 CameraPosition, v3 CameraDirection, v3 Up)
+{
+    v3 ZAxis = NOZ(-1.0f * CameraDirection);
+    v3 XAxis = NOZ(Cross(Up, ZAxis));
+    v3 YAxis = NOZ(Cross(ZAxis, XAxis));
+
+    m4 Rotation = Rows(V4(XAxis, 0),
+                       V4(YAxis, 0),
+                       V4(ZAxis, 0),
+                       V4(0,0,0, 1));
+
+    v3 P = -1.0f * CameraPosition;
+    m4 Translation = Columns(V4(1, 0, 0, 0),
+                             V4(0, 1, 0, 0),
+                             V4(0, 0, 1, 0),
+                             V4(P, 1));
+    
+    m4 Result = Rotation * Translation;
+
+    return(Result);
+}
+
+static m4
+LookAt(camera *Camera)
+{
+    return(LookAt(Camera->Position, Camera->Direction, Camera->UpDirection));
+}
+
+
+static m4
+LookAt(v3 CameraPosition, v3 CameraDirection)
+{
+    m4 Result = LookAt(CameraPosition, CameraDirection, V3(0, 1, 0));
+    return(Result);
+}
+
+static m4
+Perspective(float l, float r, float t, float b, float n, float f)
+{
+    m4 Result =
+    {
+        2 * n / (r - l), 0, (r + l)/(r - l), 0,
+        0, 2 * n / (t - b), (t + b)/(t - b), 0,
+        0, 0, -(f + n)/(f - n), -2 * f * n/(f - n),
+        0, 0, -1, 0
+    };
+    return(Result);
+}
+
+static m4
+Perspective(float r, float t, float n, float f)
+{
+    m4 Result =
+    {
+        n/r, 0, 0, 0,
+        0, n/t, 0, 0,
+        0, 0, -(f+n)/(f-n), -2*f*n/(f-n),
+        0, 0, -1, 0
+    };
+    return(Result);
+}
+

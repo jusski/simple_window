@@ -2,25 +2,31 @@
 #include "types.h"
 
 GLuint VBO;
-GLuint Program = 0;
-GLint Position;
-GLint Color;
-GLint Model;
-GLint View;
-GLint Projection;
+GLuint EBO;
 
-float XAxisRotationAngle;
-float YAxisRotationAngle;
-
-//m4 ViewMatrix;
-
-union vertex
+struct opengl_program
 {
-    struct
-    {
-        float x,y,z;
-    };
-    v3 P;
+    GLuint Program;
+
+    GLint Position;
+    GLint Normal;
+    GLint TexCoord;
+    
+    GLint Color;
+    GLint Model;
+    GLint View;
+    GLint Projection;
+};
+
+opengl_program GLProgram;
+opengl_program EmiterProgram;
+bool Initialized = false;
+
+struct vertex
+{
+    v3 Position;
+    v3 Normal;
+    v2 TexCoord;
 };
 
 struct triangle
@@ -35,45 +41,47 @@ struct point
     vertex A;
 };
 
-struct line
-{
-    vertex A;
-    vertex B;
-};
-
 struct polygon_mesh
 {
-    triangle *Triangles;
+    vertex *Vertices;
     int *Indices;
 
     int IndexCount;
-    int TriangleCount;
+    int VertexCount;
 };
+
+struct camera
+{
+    v3 Position;
+    v3 Direction;
+    v3 UpDirection;
+};
+
+
+struct game_state
+{
+    camera Camera;
+};
+
+game_state GameState;
 
 arena PersistentArena;
 
-polygon_mesh *Sphere;
-polygon_mesh *Thorus;
+polygon_mesh Sphere;
+polygon_mesh Thorus;
+polygon_mesh Cube;
 
 point *Points;
 int PointCount;
 
 
-m4 Identity =
-{
-    V4(1, 0, 0, 0),
-    V4(0, 1, 0, 0),
-    V4(0, 0, 1, 0),
-    V4(0, 0, 0, 1)
-};
-    
-static triangle
-Triangle(vertex A, vertex B, vertex C)
-{
-    triangle Result = {A, B, C};
-    return(Result);
-}
-
 input_state Input;
 float LeftOffset;
 float UpOffset;
+
+v3 BLUE = {0.1f, 0.1f, 0.9f};
+v3 CORAL = {1.0f, 0.5f, 0.31f};
+v3 OLIVE = {0.33f, 0.42f, 0.18f};
+v3 WHITE = {0.9f, 0.9f, 0.9f};
+
+m4 Projection;

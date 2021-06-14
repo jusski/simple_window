@@ -30,6 +30,13 @@ PushSize(arena *Arena, unsigned int Size)
     return(Result);
 }
 
+static void
+PushInt(arena *Arena, int Value)
+{
+    int *Result = PushStruct(Arena, int);
+    *Result = Value;
+}
+
 
 struct keyboard
 {
@@ -39,14 +46,23 @@ struct keyboard
     bool Down;
 };
 
+struct mouse
+{
+    float XOffset;
+    float YOffset;
+};
+
 struct input_state
 {
     keyboard Keyboard;
+    mouse Mouse;
     int MouseXOffset;
     int MouseYOffset;
+
+    bool PolygonMode;
 };
 
 
 typedef void *(type_wglGetProcAddress)(const char *);
-typedef void (type_InitializeOpenGL)(type_wglGetProcAddress *);
-typedef void (type_Engine)(input_state *InputState, float, float);
+typedef void (type_initialize_opengl)(type_wglGetProcAddress *);
+typedef void (type_game_loop)(input_state *InputState);

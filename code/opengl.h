@@ -7,6 +7,7 @@
 typedef signed long long int GLsizeiptr;
 typedef char GLchar;
 
+#define GL_ELEMENT_ARRAY_BUFFER           0x8893
 #define GL_STREAM_DRAW                    0x88E0
 #define GL_DYNAMIC_DRAW                   0x88E8
 #define GL_FRAGMENT_SHADER                0x8B30

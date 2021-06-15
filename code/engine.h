@@ -82,6 +82,6 @@ float UpOffset;
 v3 BLUE = {0.1f, 0.1f, 0.9f};
 v3 CORAL = {1.0f, 0.5f, 0.31f};
 v3 OLIVE = {0.33f, 0.42f, 0.18f};
-v3 WHITE = {0.9f, 0.9f, 0.9f};
+v3 WHITE = {0.8f, 0.9f, 0.9f};
 
 m4 Projection;

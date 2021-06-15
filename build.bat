@@ -9,7 +9,7 @@ set INCLUDES=
 set SOURCES=../code/engine.cpp
 
 cl /LD %CFLAGS% %INCLUDES%  %SOURCES% %IMPORTS%
-REM cl %CFLAGS% ../code/simple_window.cpp  %IMPORTS%
+ cl %CFLAGS% ../code/simple_window.cpp  %IMPORTS%
 
 ctime.exe -end ../simple_window.ctm %errorlevel%
 popd

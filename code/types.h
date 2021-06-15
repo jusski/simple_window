@@ -84,6 +84,13 @@ operator+(v3 a, v3 b)
     return(Result);
 }
 
+static inline v3&
+operator+=(v3 &a, v3 b)
+{
+    a = a + b;
+    return(a);
+}
+
 static inline v3
 operator-(v3 a, v3 b)
 {

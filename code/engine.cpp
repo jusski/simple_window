@@ -6,7 +6,7 @@
 #include "opengl.cpp"
 #include "math.h"
 #include "engine.h"
-
+#include "helpers.cpp"
 
 extern "C" __declspec(dllexport) void
 InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
@@ -14,11 +14,14 @@ InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
     AssignOpenGLFunctions(wglGetProcAddress);
 
     #define GL_GETINTEGERV(N) {GLint T; glGetIntegerv(N, &T); printf(#N ": %d\n", T);}
+#if 0
     GL_GETINTEGERV(GL_MAX_VERTEX_ATTRIBS);
     GL_GETINTEGERV(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS);
     GL_GETINTEGERV(GL_MAX_DRAW_BUFFERS);
+#endif
     glPointSize(10);
-    glEnable(GL_DEPTH_TEST); 
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
   
 }
     
@@ -101,7 +104,7 @@ DrawPolygonMesh(opengl_program *OpenGLProgram, polygon_mesh *PolygonMesh, camera
     glUniformMatrix4fv(OpenGLProgram->Model, 1, GL_TRUE, (GLfloat *)Model.E);
 
     //Projection
-#if 1
+#if 0
     glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Identity.E);
 #else
     glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Projection.E);
@@ -122,9 +125,13 @@ DrawLightSource(polygon_mesh *Emiter, camera *Camera, m4 Model = Identity,
 }
 
 extern "C" __declspec(dllexport) void
-GameLoop(input_state *InputState)
+GameLoop(input_state *InputState, type_print *PrintFunction)
 {
     arena *Arena = &PersistentArena;
+
+    static float Time = 0;
+    Time += 0.01f;
+    
     if(!Initialized)
     {
         Arena->Memory = (unsigned char *)malloc(Megabytes(3));
@@ -147,11 +154,13 @@ GameLoop(input_state *InputState)
 
         GameState = {};
         
-        GameState.Camera.Position = 0.9f * V3(0, 0, 0);
-        GameState.Camera.Direction = V3(0, 0, 0);
+        GameState.Camera.Position = 0.9f * V3(0, 0, 1);
+        GameState.Camera.Direction = V3(0, 0, -1);
         GameState.Camera.UpDirection = V3(0, 1, 0);
 
-        Projection = Perspective(1, 1, 0.1, 10);
+        Projection = Perspective(1, 1, 1, 100);
+
+        PlatformPrint = PrintFunction;
         Initialized = true;
      }
 
@@ -174,11 +183,11 @@ GameLoop(input_state *InputState)
     }
     if(Input.Keyboard.Up)
     {
-        ZCameraOffset -= 0.1f;
+        ZCameraOffset = 0.1f;
     }
     if(Input.Keyboard.Down)
     {
-        ZCameraOffset += 0.1f;
+        ZCameraOffset -= 0.1f;
     }
     
     glViewport(0, 0, 500, 500);
@@ -186,20 +195,29 @@ GameLoop(input_state *InputState)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     camera *Camera = &GameState.Camera;
-    Camera->Direction = NOZ(V3(InputState->Mouse.XOffset, InputState->Mouse.YOffset, -1));
+
+    v3 CameraXAxis = NOZ(Cross(Camera->Direction, Camera->UpDirection));
+    v3 CameraYAxis = NOZ(Cross(CameraXAxis, Camera->Direction));
+    
+    v3 DirectionOffset = InputState->Mouse.XOffset * CameraXAxis +
+                         InputState->Mouse.YOffset * CameraYAxis;
+    Camera->Direction += DirectionOffset; 
+    Camera->Direction = NOZ(Camera->Direction);
     Camera->Position = Camera->Position + ZCameraOffset * Camera->Direction +
         XCameraOffset * Cross(Camera->Direction, Camera->UpDirection);
 
-    DrawPolygonMesh(&GLProgram, &Sphere, Camera, Scale(0.1f));
 
-    m4 Model = ZTranslate(-0.5) * XTranslate(0.5) * YTranslate(0.5) * Scale(0.1f);
+    m4 Model = ZTranslate(-4.5) * XTranslate(4.5) * YTranslate(0.5);
     DrawLightSource(&Sphere, Camera, Model);
 
-    Model = YTranslate(-0.5) * XTranslate(-0.5) * Scale(0.1f);
-    DrawPolygonMesh(&GLProgram, &Sphere, Camera, Model, CORAL);
+    DrawPolygonMesh(&GLProgram, &Sphere, Camera, ZTranslate(-4.5));
 
-    Model = ZTranslate(-0.5) * XTranslate(-0.5) * Scale(0.1f);
+    Model = ZTranslate(-3.5) * XTranslate(-1.5) *ZRotate(Time) * YRotate(Time);
     DrawPolygonMesh(&GLProgram, &Cube, Camera, Model, OLIVE);
 
-    
+    PrintLine(CameraXAxis);
+    PrintLine(CameraYAxis);
+    PrintLine(Camera->Direction);
+    PrintLine(Camera->Position);
+    PrintLine(Model);
 }

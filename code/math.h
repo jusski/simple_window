@@ -42,47 +42,50 @@ float Radians(float Angle)
     return(Result);
 }
 
-static m3
+static m4
 ZRotate(float Angle)
 {
     float C = cosf(Angle);
     float S = sinf(Angle);
-    m3 Result =
+    m4 Result =
     {
-        C,-S, 0,
-        S, C, 0,
-        0, 0, 1
+        C,-S, 0, 0,
+        S, C, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
     };
 
     return(Result);
 }
 
-static m3
+static m4
 XRotate(float Angle)
 {
     float C = cosf(Angle);
     float S = sinf(Angle);
-    m3 Result =
+    m4 Result =
     {
-        1, 0, 0,
-        0, C,-S,
-        0, S, C
+        1, 0, 0, 0,
+        0, C,-S, 0,
+        0, S, C, 0,
+        0, 0, 0, 1
     };
 
     return(Result);
 }
 
 
-static m3
+static m4
 YRotate(float Angle)
 {
     float C = cosf(Angle);
     float S = sinf(Angle);
-    m3 Result =
+    m4 Result =
     {
-        C, 0, S,
-        0, 1, 0,
-       -S, 0, C
+        C, 0, S, 0,
+        0, 1, 0, 0,
+       -S, 0, C, 0,
+        0, 0, 0, 1
     };
 
     return(Result);

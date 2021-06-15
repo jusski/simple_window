@@ -7,10 +7,15 @@ uniform vec3 Color;
 
 void main()
 {
-    //gl_FragColor = vec4(0.2, 0.5, 0.3, 1.0);
     vec3 LightEmmiter = vec3(1, 1, -1);
-    //vec3 Color = vec3(0.2, 0.5, 0.3);
-    float Specular = dot(Normal, LightEmmiter);
-    vec3 ReflectedColor = Specular * Color;
-    gl_FragColor = vec4(ReflectedColor, 1.0);
+    vec3 LightColor = vec3(1, 1, 1);
+
+    float AmbientFactor = 0.1;
+    vec3 AmbientColor = Color * AmbientFactor * LightColor;
+
+    float DiffuseFactor = dot(Normal, LightEmmiter);
+    vec3 DiffuseColor = Color * DiffuseFactor * LightColor;
+
+    vec3 PhongColor = AmbientColor + DiffuseColor;
+    gl_FragColor = vec4(PhongColor, 1.0);
 }

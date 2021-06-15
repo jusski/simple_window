@@ -33,11 +33,7 @@ Win32InitializeOpenGL()
     HGLRC RenderingContext = wglCreateContext(DeviceContext);
     if (RenderingContext)
     {
-        if(wglMakeCurrent(DeviceContext, RenderingContext))
-        {
-            printf("Creating OpenGL rendering context\n");
-        }
-        else
+        if(!wglMakeCurrent(DeviceContext, RenderingContext))
         {
             fprintf(stderr,"[ERROR] Failed to set OpenGL Context\n");
         }
@@ -49,7 +45,6 @@ Win32InitializeOpenGL()
     
 }
 
-POINT Cursor;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -63,28 +58,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             return Hit;
         } break;
         #endif
-        case(WM_LBUTTONUP):
-        {
-            MouseLeftClick = false;
-        } break;
-        case(WM_LBUTTONDOWN):
-        {
-            MouseLeftClick = true;
-            LastXCoordinate = lParam & 0xFFFF;
-            LastYCoordinate = (lParam >> 16) & 0xFFFF;
-        } break;
-        case(WM_MOUSEMOVE):
-        {
-            if(MouseLeftClick)
-            {
-                int XCoordinate = lParam & 0xFFFF;
-                int YCoordinate = (lParam >> 16) & 0xFFFF;
-                XMouseOffset += 0.01f*(XCoordinate - LastXCoordinate);
-                YMouseOffset += 0.01f*(LastYCoordinate - YCoordinate);
-                LastXCoordinate = XCoordinate;
-                LastYCoordinate = YCoordinate;
-            }
-        } break;
             
         case(WM_CLOSE):
         {
@@ -116,19 +89,19 @@ ProcessKeyboardInput(input_state *InputState)
                 //bool IsDown = ((Message.lParam & (1 << 31)) == 0);
                 //bool WasDown =  ((Message.lParam & (1 << 30)) != 0);
 
-                if(KeyCode == 'K')
+                if(KeyCode == 'K' || KeyCode == 'A' )
                 {
                     InputState->Keyboard.Left = false;
                 }
-                if(KeyCode == 'O')
+                if(KeyCode == 'O' || KeyCode == 'W' )
                 {
                     InputState->Keyboard.Up = false;
                 }
-                if(KeyCode == 'L')
+                if(KeyCode == 'L' || KeyCode == 'S' )
                 {
                     InputState->Keyboard.Down = false;
                 }
-                if(KeyCode == VK_OEM_1)
+                if(KeyCode == VK_OEM_1 || KeyCode == 'D' )
                 {
                     InputState->Keyboard.Right = false;
                 }
@@ -142,23 +115,22 @@ ProcessKeyboardInput(input_state *InputState)
                 unsigned int KeyCode = (unsigned int)Message.wParam;
                 //bool IsDown = ((Message.lParam & (1 << 31)) == 0);
                 //bool WasDown =  ((Message.lParam & (1 << 30)) != 0);
-
-                if(KeyCode == 'K')
+                if(KeyCode == 'K' || KeyCode == 'A' )
                 {
                     InputState->Keyboard.Left = true;
                 }
-                if(KeyCode == 'O')
+                if(KeyCode == 'O' || KeyCode == 'W' )
                 {
                     InputState->Keyboard.Up = true;
                 }
-                if(KeyCode == 'L')
+                if(KeyCode == 'L' || KeyCode == 'S' )
                 {
                     InputState->Keyboard.Down = true;
                 }
-                if(KeyCode == VK_OEM_1)
+                if(KeyCode == VK_OEM_1 || KeyCode == 'D' )
                 {
                     InputState->Keyboard.Right = true;
-                }    
+                }
                 
                 if (KeyCode == VK_ESCAPE)
                 {
@@ -183,8 +155,22 @@ ProcessKeyboardInput(input_state *InputState)
         
     }
 }
+
+
+static void
+Print(const char *Message, ...)
+{
+    SetConsoleCursorPosition(Console, ConsoleCursorPosition);
+    va_list vl;
+    va_start(vl, Message);
+    vprintf(Message, vl);
+    va_end(vl);
+    ConsoleCursorPosition.Y += 1;
+}
+
 int main()
 {
+    Console = GetStdHandle(STD_OUTPUT_HANDLE);
     HMODULE Library = LoadLibrary("engine.dll");
     GameLoop = (type_game_loop *)GetProcAddress(Library, "GameLoop");
     InitializeOpenGL = (type_initialize_opengl *)GetProcAddress(Library, "InitializeOpenGL");
@@ -215,11 +201,10 @@ int main()
     Window = CreateWindowEx(0,
                             WindowClass.lpszClassName,
                             "Simple OpenGL Window",
-                            WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT, 500, 500,
+                            WS_POPUP, 500, 200, 500, 500,
                             NULL, NULL, GetModuleHandle(0), NULL);
     if(Window)
     {
-        printf("Creating Window.\n");
         ShowWindow(Window, SW_NORMAL);
         UpdateWindow(Window);
 
@@ -228,19 +213,20 @@ int main()
         InitializeOpenGL((type_wglGetProcAddress *)GetProcAddress(LoadLibrary("opengl32.dll"), "wglGetProcAddress"));
 
         ShowCursor(false);
-        RECT Clip;
-        GetWindowRect(Window, &Clip);
-        ClipCursor(&Clip);
-            
+        SetCursorPos(600, 300);
         while(Running)
         {
+            ConsoleCursorPosition.Y = 0;
             input_state InputState = {};
             ProcessKeyboardInput(&InputState);
-            InputState.Mouse.XOffset = XMouseOffset;
-            InputState.Mouse.YOffset = YMouseOffset;
+            POINT CursorPosition;
+            GetCursorPos(&CursorPosition);
+            SetCursorPos(600,300);
+            InputState.Mouse.XOffset = 0.01f * (CursorPosition.x - 600);
+            InputState.Mouse.YOffset = -0.01f * (CursorPosition.y - 300);
             if(!Paused)
             {
-                GameLoop(&InputState);
+                GameLoop(&InputState, &Print);
                 Sleep(30);
                 SwapBuffers(DeviceContext);
             }

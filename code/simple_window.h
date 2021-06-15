@@ -4,6 +4,8 @@ type_game_loop *GameLoop;
 type_initialize_opengl *InitializeOpenGL;
     
 static HDC DeviceContext;
+static HANDLE Console;
+static COORD ConsoleCursorPosition;
 
 static volatile bool Running = true;
 static volatile bool Paused = false;

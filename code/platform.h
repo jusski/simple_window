@@ -52,6 +52,9 @@ struct mouse
     float YOffset;
 };
 
+typedef void (type_print)(const char *, ...);
+type_print *PlatformPrint;
+
 struct input_state
 {
     keyboard Keyboard;
@@ -65,4 +68,5 @@ struct input_state
 
 typedef void *(type_wglGetProcAddress)(const char *);
 typedef void (type_initialize_opengl)(type_wglGetProcAddress *);
-typedef void (type_game_loop)(input_state *InputState);
+typedef void (type_game_loop)(input_state *InputState, type_print *);
+

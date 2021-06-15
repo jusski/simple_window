@@ -22,14 +22,13 @@ InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
     glPointSize(10);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
-  
 }
     
 static void
 DrawPrimitives(opengl_program *OpenGLProgram, triangle *Triangles, int Count, camera *Camera)
 {
     glUseProgram(OpenGLProgram->Program);
-
+    //
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(triangle) * Count, Triangles, GL_STREAM_DRAW);
     glVertexAttribPointer(OpenGLProgram->Position, 3, GL_FLOAT, GL_FALSE,
@@ -76,38 +75,46 @@ DrawPoint(opengl_program *OpenGLProgram, v3 Point, camera *Camera)
 }
 
 static void
-DrawPolygonMesh(opengl_program *OpenGLProgram, polygon_mesh *PolygonMesh, camera *Camera,
-                m4 Model = Identity, v3 Color = BLUE)
+DrawPolygonMesh(opengl_program *Program, polygon_mesh *PolygonMesh, camera *Camera,
+                v4 LightSource, m4 Model = Identity, v3 Color = BLUE)
 {
-    glUseProgram(OpenGLProgram->Program);
+    glUseProgram(Program->Program);
 
     vertex *Vertices = PolygonMesh->Vertices;
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * PolygonMesh->VertexCount,
                  Vertices, GL_STATIC_DRAW);
-    //Position
-    glVertexAttribPointer(OpenGLProgram->Position, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, Position));
-    glEnableVertexAttribArray(OpenGLProgram->Position);
+    // Position
+    glVertexAttribPointer(Program->Position, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, Position));
+    glEnableVertexAttribArray(Program->Position);
 
-    //Normal
-    glVertexAttribPointer(OpenGLProgram->Normal, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, Normal));
-    glEnableVertexAttribArray(OpenGLProgram->Normal);
+    // Normal
+    glVertexAttribPointer(Program->Normal, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, Normal));
+    glEnableVertexAttribArray(Program->Normal);
     
-    //Color
-    glUniform3f(OpenGLProgram->Color, Color.r, Color.g, Color.b);
+    // Color
+    glUniform3f(Program->Color, Color.r, Color.g, Color.b);
 
-    //View
+    // LightSource
+    LightSource = WorldSpaceToObjectSpace(Model) * LightSource;
+    glUniform4f(Program->LightSource, LightSource.x, LightSource.y, LightSource.z, LightSource.w);
+
+    // CameraPosition
+    v4 CameraPosition = WorldSpaceToObjectSpace(Model) * V4(Camera->Position, 1);
+    glUniform4f(Program->CameraPosition, CameraPosition.x, CameraPosition.y, CameraPosition.z, CameraPosition.w);
+    
+    // View
     m4 ViewMatrix = LookAt(Camera->Position, Camera->Direction, Camera->UpDirection);
-    glUniformMatrix4fv(OpenGLProgram->View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
+    glUniformMatrix4fv(Program->View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
 
-    //Model
-    glUniformMatrix4fv(OpenGLProgram->Model, 1, GL_TRUE, (GLfloat *)Model.E);
+    // Model
+    glUniformMatrix4fv(Program->Model, 1, GL_TRUE, (GLfloat *)Model.E);
 
-    //Projection
+    // Projection
 #if 0
-    glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Identity.E);
+    glUniformMatrix4fv(Program->Projection, 1, GL_TRUE, (GLfloat *)Identity.E);
 #else
-    glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Projection.E);
+    glUniformMatrix4fv(Program->Projection, 1, GL_TRUE, (GLfloat *)Projection.E);
 #endif
     
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
@@ -118,10 +125,10 @@ DrawPolygonMesh(opengl_program *OpenGLProgram, polygon_mesh *PolygonMesh, camera
 }
 
 static void
-DrawLightSource(polygon_mesh *Emiter, camera *Camera, m4 Model = Identity,
-                v3 Color = WHITE)
+DrawLightSource(opengl_program *Program, polygon_mesh *Emiter, camera *Camera,
+                m4 Model = Identity, v3 Color = WHITE)
 {
-    DrawPolygonMesh(&EmiterProgram, Emiter, Camera, Model, Color);
+    DrawPolygonMesh(Program, Emiter, Camera, V4(0, 0, 0, 0), Model, Color);
 }
 
 extern "C" __declspec(dllexport) void
@@ -137,13 +144,18 @@ GameLoop(input_state *InputState, type_print *PrintFunction)
         Arena->Memory = (unsigned char *)malloc(Megabytes(3));
         Arena->Index = 0;
         Arena->MaxIndex = Megabytes(3);
-        
-        Sphere = LoadModel(Arena, "../code/models/sphere.ply");
-        //Thorus = LoadModel(Arena, "../code/models/thorus.stl");
-        Cube = LoadModel(Arena, "../code/models/cube.ply");
 
-        GLProgram = CreateOpenGLProgram();
-        EmiterProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/emiter.fs");
+        Sphere = PushStruct(Arena, polygon_mesh);
+        *Sphere = LoadModel(Arena, "../code/models/sphere.ply");
+        Thorus = PushStruct(Arena, polygon_mesh);
+        //Thorus = LoadModel(Arena, "../code/models/thorus.stl");
+        Cube = PushStruct(Arena, polygon_mesh);
+        *Cube = LoadModel(Arena, "../code/models/cube.ply");
+
+        GLProgram = PushStruct(Arena, opengl_program);
+        *GLProgram = CreateOpenGLProgram();
+        EmiterProgram =PushStruct(Arena, opengl_program);
+        *EmiterProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/emiter.fs");
 
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
@@ -198,26 +210,25 @@ GameLoop(input_state *InputState, type_print *PrintFunction)
 
     v3 CameraXAxis = NOZ(Cross(Camera->Direction, Camera->UpDirection));
     v3 CameraYAxis = NOZ(Cross(CameraXAxis, Camera->Direction));
-    
+    Camera->UpDirection = CameraYAxis;
+
     v3 DirectionOffset = InputState->Mouse.XOffset * CameraXAxis +
                          InputState->Mouse.YOffset * CameraYAxis;
     Camera->Direction += DirectionOffset; 
     Camera->Direction = NOZ(Camera->Direction);
     Camera->Position = Camera->Position + ZCameraOffset * Camera->Direction +
-        XCameraOffset * Cross(Camera->Direction, Camera->UpDirection);
+                       XCameraOffset * Cross(Camera->Direction, Camera->UpDirection);
+    
+    // Sun
+    m4 WorldSpace = ZTranslate(-4.5) * XTranslate(4.5) * YTranslate(0.5) * Scale(0.1);
+    DrawLightSource(EmiterProgram, Sphere, Camera, WorldSpace);
+    v4 LightSource = WorldSpace * V4(0, 0, 0, 1);
 
+    // Sphere
+    WorldSpace = ZTranslate(-4.5);
+    DrawPolygonMesh(GLProgram, Sphere, Camera, LightSource, WorldSpace);
 
-    m4 Model = ZTranslate(-4.5) * XTranslate(4.5) * YTranslate(0.5);
-    DrawLightSource(&Sphere, Camera, Model);
-
-    DrawPolygonMesh(&GLProgram, &Sphere, Camera, ZTranslate(-4.5));
-
-    Model = ZTranslate(-3.5) * XTranslate(-1.5) *ZRotate(Time) * YRotate(Time);
-    DrawPolygonMesh(&GLProgram, &Cube, Camera, Model, OLIVE);
-
-    PrintLine(CameraXAxis);
-    PrintLine(CameraYAxis);
-    PrintLine(Camera->Direction);
-    PrintLine(Camera->Position);
-    PrintLine(Model);
+    // Cube
+    WorldSpace = ZTranslate(-3.5) * XTranslate(-1.5) *ZRotate(Time) * YRotate(Time);
+    DrawPolygonMesh(GLProgram, Cube, Camera, LightSource, WorldSpace, BLUE);
 }

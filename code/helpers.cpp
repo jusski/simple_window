@@ -1,4 +1,4 @@
-#define PrintLine(Name) PlatformPrint_(#Name, Name)
+#define PrintLine(Name) PlatformPrint_(#Name, Name) 
 
 static void
 PlatformPrint_(const char *Name, v4 Value)
@@ -30,10 +30,11 @@ PlatformPrint_(const char *Name, float Value)
 static void
 PlatformPrint_(const char *Name, m4 Value)
 {
+    PlatformPrint("");
     PlatformPrint_(Name, Value.R1);
-    PlatformPrint_(Name, Value.R2);
-    PlatformPrint_(Name, Value.R3);
-    PlatformPrint_(Name, Value.R4);
+    PlatformPrint_("", Value.R2);
+    PlatformPrint_("", Value.R3);
+    PlatformPrint_("", Value.R4);
 }
 
 

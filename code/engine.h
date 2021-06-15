@@ -13,13 +13,17 @@ struct opengl_program
     GLint TexCoord;
     
     GLint Color;
+
+    GLint LightSource;
+    GLint CameraPosition;
+    
     GLint Model;
     GLint View;
     GLint Projection;
 };
 
-opengl_program GLProgram;
-opengl_program EmiterProgram;
+opengl_program *GLProgram;
+opengl_program *EmiterProgram;
 bool Initialized = false;
 
 struct vertex
@@ -57,6 +61,17 @@ struct camera
     v3 UpDirection;
 };
 
+struct object3d
+{
+    polygon_mesh *Mesh;
+    m4 WorldSpaceTransform;
+    m4 InverseTransform;
+    v3 Color;
+
+    opengl_program *Program;
+    GLuint VBO;
+    GLuint EBO;
+};
 
 struct game_state
 {
@@ -67,9 +82,9 @@ game_state GameState;
 
 arena PersistentArena;
 
-polygon_mesh Sphere;
-polygon_mesh Thorus;
-polygon_mesh Cube;
+polygon_mesh *Sphere;
+polygon_mesh *Thorus;
+polygon_mesh *Cube;
 
 point *Points;
 int PointCount;

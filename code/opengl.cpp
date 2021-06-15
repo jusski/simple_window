@@ -361,12 +361,14 @@ LoadTrianglesSTL(arena *Arena, unsigned char *FileContents)
 static polygon_mesh 
 LoadModel(arena *Arena, char *Path)
 {
+    polygon_mesh Result = {};
     char *FileContents = ReadWholeFile(Path);
-
-    polygon_mesh Result = LoadMeshPLY(Arena, FileContents);
+    if(FileContents)
+    {
+        Result = LoadMeshPLY(Arena, FileContents);
+        free(FileContents);
+    }
     
-    
-    free(FileContents);
     return(Result);
 }
 
@@ -463,6 +465,8 @@ CreateOpenGLProgram(const char *VertexShaderSource, const char *FragmentShaderSo
         Result.Model = glGetUniformLocation(Program, "Model");
         Result.View = glGetUniformLocation(Program, "View");
         Result.Projection = glGetUniformLocation(Program, "Projection");
+        Result.LightSource = glGetUniformLocation(Program, "LightSource");
+        Result.CameraPosition = glGetUniformLocation(Program, "CameraPosition");
         
         glDeleteShader(VertexShader);
         glDeleteShader(FragmentShader);
@@ -545,3 +549,29 @@ Perspective(float r, float t, float n, float f)
     return(Result);
 }
 
+static m4
+WorldSpaceToObjectSpace(m4 WorldSpace)
+{
+    v4 R1 = WorldSpace.R1;
+    v4 R2 = WorldSpace.R2;
+    v4 R3 = WorldSpace.R3;
+    v4 R4 = WorldSpace.R4;
+    m4 Rotate =
+    {
+        R1.x, R2.x, R3.x, 0,
+        R1.y, R2.y, R3.y, 0,
+        R1.z, R2.z, R3.z, 0,
+        0,    0,    0,    1
+    };
+    m4 Translate =
+    {
+        1, 0, 0, -R1.w,
+        0, 1, 0, -R2.w,
+        0, 0, 1, -R3.w,
+        0, 0, 0, 1
+    };
+
+    m4 Result = Rotate * Translate;
+
+    return(Result);
+}

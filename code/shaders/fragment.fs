@@ -8,6 +8,13 @@ uniform vec3 Color;
 uniform vec4 LightSource;
 uniform vec4 CameraPosition;
 
+
+struct material
+{
+    vec3 A;
+};
+
+uniform material C;
 void main()
 {
     vec3 LightEmmiter = normalize(LightSource.xyz - Position);
@@ -25,7 +32,7 @@ void main()
     vec3 CameraDirection = normalize(CameraPosition.xyz - Position);
     vec3 Reflection = reflect(-LightEmmiter, Normal);
     float SpecularFactor = pow(max(dot(Reflection, CameraDirection), 0.0), 128.0);
-    vec3 SpecularColor = 0.5 * SpecularFactor * LightColor;
+    vec3 SpecularColor = Color * 0.5 * SpecularFactor * LightColor;
 
     vec3 PhongColor = AmbientColor + DiffuseColor + SpecularColor;
     gl_FragColor = vec4(PhongColor, 1.0);

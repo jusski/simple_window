@@ -52,6 +52,7 @@ struct mouse
     float YOffset;
     int Wheel;
     bool LButton;
+    bool RButton;
 };
 
 

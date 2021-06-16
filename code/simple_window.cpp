@@ -43,7 +43,7 @@ Win32InitializeOpenGL()
                                              &DesiredPixelFormat);
 
     PIXELFORMATDESCRIPTOR SuggestedPixelFormat = {};
-    PixelFormatIndex = 6;
+    //PixelFormatIndex = 6; // TODO IMPORTANT WTF
     if(!DescribePixelFormat(DeviceContext, PixelFormatIndex,
                             sizeof(PIXELFORMATDESCRIPTOR), &SuggestedPixelFormat))
     {
@@ -69,6 +69,47 @@ Win32InitializeOpenGL()
     
 }
 
+static void
+Win32UpgradeOpenGLContext()
+{
+    type_wglChoosePixelFormatARB *wglChoosePixelFormatARB = (type_wglChoosePixelFormatARB *)wglGetProcAddress("wglChoosePixelFormatARB");
+    type_wglCreateContextAttribsARB *wglCreateContextAttribsARB = (type_wglCreateContextAttribsARB *)wglGetProcAddress("wglCreateContextAttribsARB");
+    if(wglChoosePixelFormatARB && wglCreateContextAttribsARB)
+    {
+        HWND Window = CreateWindowEx(0,
+                                "SimpleOpenGLWindow",
+                                "Simple OpenGL Window",
+                                WS_POPUP, 600, 300, 500, 500,
+                                NULL, NULL, GetModuleHandle(0), NULL);
+        HDC DC = GetDC(Window);
+        
+        const int pixelAttribs[] = {
+            WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
+            WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
+            WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
+            WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
+            WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
+            WGL_COLOR_BITS_ARB, 32,
+            WGL_ALPHA_BITS_ARB, 8,
+            WGL_DEPTH_BITS_ARB, 24,
+            WGL_STENCIL_BITS_ARB, 8,
+            //WGL_SAMPLE_BUFFERS_ARB, GL_TRUE,
+            //WGL_SAMPLES_ARB, 4,
+            0
+        };
+ 
+        int pixelFormatID; UINT numFormats;
+        bool Status = wglChoosePixelFormatARB(DC, pixelAttribs, NULL, 1, &pixelFormatID, &numFormats);
+        if (Status)
+        {
+            
+        }
+    }
+    else
+    {
+        fprintf(stderr, "[ERROR] Failed to get ARB pointers\n");
+    }
+}
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -93,6 +134,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         case(WM_LBUTTONUP):
         {
             MouseLButton = false;
+        } break;
+        case(WM_RBUTTONDOWN):
+        {
+            MouseRButton = true;
+        } break;
+        case(WM_RBUTTONUP):
+        {
+            MouseRButton = false;
         } break;
         case(WM_CLOSE):
         {
@@ -240,6 +289,7 @@ int main()
 
         DeviceContext = GetDC(Window);
         Win32InitializeOpenGL();
+        Win32UpgradeOpenGLContext();
         
         ShowCursor(false);
         SetCursorPos(600, 300);
@@ -256,6 +306,7 @@ int main()
             InputState.Mouse.YOffset = -0.01f * (CursorPosition.y - 300);
             InputState.Mouse.Wheel = MouseWheel / 120;
             InputState.Mouse.LButton = MouseLButton;
+            InputState.Mouse.RButton = MouseRButton;
             MouseWheel = 0;
             if(!Paused)
             {

@@ -2,6 +2,12 @@
 #include "types.h"
 
 static float
+Square(float A)
+{
+    return(A*A);
+}
+
+static float
 Clamp(float A, float MinA, float MaxA)
 {
     float Result = Max(Min(A, MaxA), MinA);

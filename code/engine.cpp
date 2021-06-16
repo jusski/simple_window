@@ -8,6 +8,7 @@
 #include "helpers.cpp"
 #include "opengl.cpp"
 #include "math.h"
+#include "ray_trace.cpp"
 
 extern "C" __declspec(dllexport) void
 ExportFunctions(exported_functions Functions)

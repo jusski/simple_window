@@ -72,6 +72,9 @@ struct object3d
     opengl_program *Program;
     GLuint VBO;
     GLuint EBO;
+
+    v3 Origin;    // Bounding box
+    float Radius; // Bounding box
 };
 
 struct game_state

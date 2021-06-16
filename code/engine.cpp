@@ -3,15 +3,23 @@
 #include <math.h>
 
 #include "platform.h"
+#include "engine.h"
+
+#include "helpers.cpp"
 #include "opengl.cpp"
 #include "math.h"
-#include "engine.h"
-#include "helpers.cpp"
 
 extern "C" __declspec(dllexport) void
-InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
+ExportFunctions(exported_functions Functions)
 {
-    AssignOpenGLFunctions(wglGetProcAddress);
+    PlatformPrint = Functions.PlatformPrint;
+    wglGetProcAddress = Functions.wglGetProcAddress;
+}
+
+static void
+InitializeOpenGL()
+{
+    AssignOpenGLFunctions();
 
     #define GL_GETINTEGERV(N) {GLint T; glGetIntegerv(N, &T); printf(#N ": %d\n", T);}
 #if 0
@@ -22,6 +30,8 @@ InitializeOpenGL(type_wglGetProcAddress *wglGetProcAddress)
     glPointSize(10);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
 }
     
 static void
@@ -132,54 +142,61 @@ DrawLightSource(opengl_program *Program, polygon_mesh *Emiter, camera *Camera,
 }
 
 extern "C" __declspec(dllexport) void
-GameLoop(input_state *InputState, type_print *PrintFunction)
+GameLoop(input_state *InputState)
 {
     arena *Arena = &PersistentArena;
 
     static float Time = 0;
     Time += 0.01f;
-    
+
     if(!Initialized)
     {
+        InitializeOpenGL();
         Arena->Memory = (unsigned char *)malloc(Megabytes(3));
         Arena->Index = 0;
         Arena->MaxIndex = Megabytes(3);
 
+        // Load Models
         Sphere = PushStruct(Arena, polygon_mesh);
         *Sphere = LoadModel(Arena, "../code/models/sphere.ply");
         Thorus = PushStruct(Arena, polygon_mesh);
-        //Thorus = LoadModel(Arena, "../code/models/thorus.stl");
         Cube = PushStruct(Arena, polygon_mesh);
         *Cube = LoadModel(Arena, "../code/models/cube.ply");
+        BRDM = PushStruct(Arena, polygon_mesh);
+        *BRDM = LoadModelSTL(Arena, "../code/models/BRDM.stl");
 
+        // Create OpenGL Program
         GLProgram = PushStruct(Arena, opengl_program);
-        *GLProgram = CreateOpenGLProgram();
+        *GLProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/fragment.fs");
         EmiterProgram =PushStruct(Arena, opengl_program);
         *EmiterProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/emiter.fs");
-
+        // TODO move to object
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
 
-        
-        PointCount = 1;
-        Points = PushArray(Arena, point, PointCount);
-
         GameState = {};
-        
         GameState.Camera.Position = 0.9f * V3(0, 0, 1);
         GameState.Camera.Direction = V3(0, 0, -1);
         GameState.Camera.UpDirection = V3(0, 1, 0);
+        
+        Projection = Perspective(1, 1, 1, 500);
 
-        Projection = Perspective(1, 1, 1, 100);
-
-        PlatformPrint = PrintFunction;
         Initialized = true;
      }
 
+    GLint DEPTH_FUNC[10];
+    glGetIntegerv(GL_DEPTH_FUNC, DEPTH_FUNC);
+    PrintLine(DEPTH_FUNC[0]);
+
+    PrintLine(glIsEnabled(GL_DEPTH_TEST));
+    PrintLine(glIsEnabled(GL_CULL_FACE));
+    PrintLine(glIsEnabled(GL_SCISSOR_TEST));
+    PrintLine(glIsEnabled(GL_STENCIL_TEST));
     
     Input = *InputState;
     float ZCameraOffset = 0.0f;
     float XCameraOffset = 0.0f;
+    float YCameraOffset = 0.0f;
 
     if(Input.PolygonMode == true)
     {
@@ -201,6 +218,10 @@ GameLoop(input_state *InputState, type_print *PrintFunction)
     {
         ZCameraOffset -= 0.1f;
     }
+    if(Input.Mouse.Wheel != 0)
+    {
+        ZCameraOffset += Input.Mouse.Wheel * 0.1f;
+    }
     
     glViewport(0, 0, 500, 500);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -212,12 +233,20 @@ GameLoop(input_state *InputState, type_print *PrintFunction)
     v3 CameraYAxis = NOZ(Cross(CameraXAxis, Camera->Direction));
     Camera->UpDirection = CameraYAxis;
 
-    v3 DirectionOffset = InputState->Mouse.XOffset * CameraXAxis +
-                         InputState->Mouse.YOffset * CameraYAxis;
-    Camera->Direction += DirectionOffset; 
-    Camera->Direction = NOZ(Camera->Direction);
+    if(InputState->Mouse.LButton == false)
+    {
+        v3 DirectionOffset = InputState->Mouse.XOffset * CameraXAxis +
+                             InputState->Mouse.YOffset * CameraYAxis;
+        Camera->Direction += DirectionOffset; 
+        Camera->Direction = NOZ(Camera->Direction);
+    }
+    else
+    {
+        XCameraOffset += InputState->Mouse.XOffset;
+        YCameraOffset += InputState->Mouse.YOffset;
+    }
     Camera->Position = Camera->Position + ZCameraOffset * Camera->Direction +
-                       XCameraOffset * Cross(Camera->Direction, Camera->UpDirection);
+                       XCameraOffset * CameraXAxis + YCameraOffset * CameraYAxis;
     
     // Sun
     m4 WorldSpace = ZTranslate(-4.5) * XTranslate(4.5) * YTranslate(0.5) * Scale(0.1);
@@ -231,4 +260,11 @@ GameLoop(input_state *InputState, type_print *PrintFunction)
     // Cube
     WorldSpace = ZTranslate(-3.5) * XTranslate(-1.5) *ZRotate(Time) * YRotate(Time);
     DrawPolygonMesh(GLProgram, Cube, Camera, LightSource, WorldSpace, BLUE);
+#if 0
+    // BRDM
+    WorldSpace = XRotate(Time) * ZTranslate(-15) * XTranslate(-190) * YTranslate(-80);
+    DrawPolygonMesh(GLProgram, BRDM, Camera, LightSource, WorldSpace, OLIVE);
+#endif
+    PrintLine(Camera->Position);
+    PrintLine(Input.Mouse.Wheel);
 }

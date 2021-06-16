@@ -4,6 +4,30 @@
 #include "simple_window.h"
 
 static void
+Print(const char *Message, ...)
+{
+    SetConsoleCursorPosition(Console, ConsoleCursorPosition);
+    va_list vl;
+    va_start(vl, Message);
+    vprintf(Message, vl);
+    va_end(vl);
+    ConsoleCursorPosition.Y += 1;
+}
+
+
+static void
+Print(short Row, const char *Message, ...)
+{
+    COORD Coord = {};
+    Coord.Y = Row;
+    SetConsoleCursorPosition(Console, Coord);
+    va_list vl;
+    va_start(vl, Message);
+    vprintf(Message, vl);
+    va_end(vl);
+}
+
+static void
 Win32InitializeOpenGL()
 {
     PIXELFORMATDESCRIPTOR DesiredPixelFormat = {};
@@ -58,7 +82,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             return Hit;
         } break;
         #endif
-            
+        case(WM_MOUSEWHEEL):
+        {
+            MouseWheel += GET_WHEEL_DELTA_WPARAM(wParam);
+        } break;
+        case(WM_LBUTTONDOWN):
+        {
+            MouseLButton = true;
+        } break;
+        case(WM_LBUTTONUP):
+        {
+            MouseLButton = false;
+        } break;
         case(WM_CLOSE):
         {
             DestroyWindow(hwnd);
@@ -157,23 +192,18 @@ ProcessKeyboardInput(input_state *InputState)
 }
 
 
-static void
-Print(const char *Message, ...)
-{
-    SetConsoleCursorPosition(Console, ConsoleCursorPosition);
-    va_list vl;
-    va_start(vl, Message);
-    vprintf(Message, vl);
-    va_end(vl);
-    ConsoleCursorPosition.Y += 1;
-}
-
 int main()
 {
     Console = GetStdHandle(STD_OUTPUT_HANDLE);
+
     HMODULE Library = LoadLibrary("engine.dll");
     GameLoop = (type_game_loop *)GetProcAddress(Library, "GameLoop");
-    InitializeOpenGL = (type_initialize_opengl *)GetProcAddress(Library, "InitializeOpenGL");
+    export_functions *ExportFunctions = (export_functions *)GetProcAddress(Library, "ExportFunctions");
+
+    exported_functions Functions = {};
+    Functions.PlatformPrint = Print;
+    Functions.wglGetProcAddress = (type_wglGetProcAddress *)GetProcAddress(LoadLibrary("opengl32.dll"), "wglGetProcAddress");
+    ExportFunctions(Functions);
 
     WNDCLASSEX WindowClass = {};
     HWND Window;
@@ -210,8 +240,7 @@ int main()
 
         DeviceContext = GetDC(Window);
         Win32InitializeOpenGL();
-        InitializeOpenGL((type_wglGetProcAddress *)GetProcAddress(LoadLibrary("opengl32.dll"), "wglGetProcAddress"));
-
+        
         ShowCursor(false);
         SetCursorPos(600, 300);
         while(Running)
@@ -219,14 +248,18 @@ int main()
             ConsoleCursorPosition.Y = 0;
             input_state InputState = {};
             ProcessKeyboardInput(&InputState);
+
             POINT CursorPosition;
             GetCursorPos(&CursorPosition);
             SetCursorPos(600,300);
             InputState.Mouse.XOffset = 0.01f * (CursorPosition.x - 600);
             InputState.Mouse.YOffset = -0.01f * (CursorPosition.y - 300);
+            InputState.Mouse.Wheel = MouseWheel / 120;
+            InputState.Mouse.LButton = MouseLButton;
+            MouseWheel = 0;
             if(!Paused)
             {
-                GameLoop(&InputState, &Print);
+                GameLoop(&InputState);
                 Sleep(30);
                 SwapBuffers(DeviceContext);
             }

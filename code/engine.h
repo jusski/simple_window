@@ -1,5 +1,6 @@
 #pragma once
 #include "types.h"
+#include "opengl.h"
 
 GLuint VBO;
 GLuint EBO;
@@ -35,9 +36,9 @@ struct vertex
 
 struct triangle
 {
-    vertex A;
-    vertex B;
-    vertex C;    
+    v3 A;
+    v3 B;
+    v3 C;    
 };
 
 struct point
@@ -85,6 +86,7 @@ arena PersistentArena;
 polygon_mesh *Sphere;
 polygon_mesh *Thorus;
 polygon_mesh *Cube;
+polygon_mesh *BRDM;
 
 point *Points;
 int PointCount;

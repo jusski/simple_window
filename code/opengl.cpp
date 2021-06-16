@@ -11,7 +11,7 @@ m4 Identity =
 };
     
 static triangle
-Triangle(vertex A, vertex B, vertex C)
+Triangle(v3 A, v3 B, v3 C)
 {
     triangle Result = {A, B, C};
     return(Result);
@@ -330,16 +330,16 @@ LoadVerticesOBJ(arena *Arena, char *FileContents)
 #pragma pack(push, 1)
 struct vertex_stl
 {
-    vertex Normal;
-    vertex A;
-    vertex B;
-    vertex C;
+    v3 Normal;
+    v3 A;
+    v3 B;
+    v3 C;
     __int16 Ignored;
 };
 #pragma pack(pop)
 
-static int
-LoadTrianglesSTL(arena *Arena, unsigned char *FileContents)
+static polygon_mesh
+LoadMeshSTL(arena *Arena, unsigned char *FileContents)
 {
     unsigned char *Cursor = FileContents;
     Cursor += 80; // Skip Header
@@ -348,14 +348,36 @@ LoadTrianglesSTL(arena *Arena, unsigned char *FileContents)
     Cursor +=4;
 
     vertex_stl *VertexSTL = (vertex_stl *)Cursor;
+
+    polygon_mesh Result = {};
+    Result.Vertices = (vertex *)PushSize(Arena, 0);
+    Result.VertexCount = TriangleCount * 3;
+    
     for(int Count = 0; Count < TriangleCount; ++Count)
     {
-        triangle T = Triangle(VertexSTL->A, VertexSTL->B, VertexSTL->C);
-        PushTriangle(Arena, T);
+        vertex *Vertex = PushStruct(Arena, vertex);
+        Vertex->Position = VertexSTL->A;
+        Vertex->Normal = VertexSTL->Normal;
+
+        Vertex = PushStruct(Arena, vertex);
+        Vertex->Position = VertexSTL->B;
+        Vertex->Normal = VertexSTL->Normal;
+
+        Vertex = PushStruct(Arena, vertex);
+        Vertex->Position = VertexSTL->C;
+        Vertex->Normal = VertexSTL->Normal;
+
         VertexSTL++;
     }
 
-    return(TriangleCount);
+    Result.Indices = (int *)PushSize(Arena, 0);
+    Result.IndexCount = Result.VertexCount;
+    for(int Count = 0; Count < Result.IndexCount; ++Count)
+    {
+        PushInt(Arena, Count);
+    }
+
+    return(Result);
 }
 
 static polygon_mesh 
@@ -366,6 +388,20 @@ LoadModel(arena *Arena, char *Path)
     if(FileContents)
     {
         Result = LoadMeshPLY(Arena, FileContents);
+        free(FileContents);
+    }
+    
+    return(Result);
+}
+
+static polygon_mesh 
+LoadModelSTL(arena *Arena, char *Path)
+{
+    polygon_mesh Result = {};
+    unsigned char *FileContents = ReadWholeFileBinary(Path);
+    if(FileContents)
+    {
+        Result = LoadMeshSTL(Arena, FileContents);
         free(FileContents);
     }
     

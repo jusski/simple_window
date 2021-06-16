@@ -10,6 +10,8 @@ static COORD ConsoleCursorPosition;
 static volatile bool Running = true;
 static volatile bool Paused = false;
 
+static volatile int MouseWheel;
+static volatile bool MouseLButton;
 static volatile float XMouseOffset = 0.0f;
 static volatile float YMouseOffset = 0.0f;
 static int LastXCoordinate = 0;

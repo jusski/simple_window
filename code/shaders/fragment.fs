@@ -13,15 +13,18 @@ void main()
     vec3 LightEmmiter = normalize(LightSource.xyz - Position);
     vec3 LightColor = vec3(1, 1, 1);
 
+    // Ambient
     float AmbientFactor = 0.1;
     vec3 AmbientColor = Color * AmbientFactor * LightColor;
 
+    // Diffuse
     float DiffuseFactor = max(dot(Normal, LightEmmiter), 0.0);
     vec3 DiffuseColor = Color * DiffuseFactor * LightColor;
 
+    // Specular
     vec3 CameraDirection = normalize(CameraPosition.xyz - Position);
     vec3 Reflection = reflect(-LightEmmiter, Normal);
-    float SpecularFactor = pow(max(dot(Reflection, CameraDirection), 0.0), 64.0);
+    float SpecularFactor = pow(max(dot(Reflection, CameraDirection), 0.0), 128.0);
     vec3 SpecularColor = 0.5 * SpecularFactor * LightColor;
 
     vec3 PhongColor = AmbientColor + DiffuseColor + SpecularColor;

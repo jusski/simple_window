@@ -50,23 +50,27 @@ struct mouse
 {
     float XOffset;
     float YOffset;
+    int Wheel;
+    bool LButton;
 };
 
-typedef void (type_print)(const char *, ...);
-type_print *PlatformPrint;
 
 struct input_state
 {
     keyboard Keyboard;
     mouse Mouse;
-    int MouseXOffset;
-    int MouseYOffset;
-
     bool PolygonMode;
 };
 
-
+typedef void (type_print)(const char *, ...);
 typedef void *(type_wglGetProcAddress)(const char *);
 typedef void (type_initialize_opengl)(type_wglGetProcAddress *);
-typedef void (type_game_loop)(input_state *InputState, type_print *);
+typedef void (type_game_loop)(input_state *InputState);
+
+struct exported_functions
+{
+    type_wglGetProcAddress *wglGetProcAddress;
+    type_print *PlatformPrint;
+};
+typedef void (export_functions)(exported_functions);
 

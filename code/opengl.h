@@ -4,6 +4,8 @@
 #define WINGDIAPI __declspec(dllimport)
 #include <gl/gl.h>
 
+type_wglGetProcAddress *wglGetProcAddress;
+
 typedef signed long long int GLsizeiptr;
 typedef char GLchar;
 
@@ -103,7 +105,7 @@ OpenGLFunction(glUniformMatrix3fv)
 OpenGLFunction(glUniformMatrix4fv)
 
 static void
-AssignOpenGLFunctions(type_wglGetProcAddress *wglGetProcAddress)
+AssignOpenGLFunctions()
 {
     GetOpenGLFuncAddress(glBindBuffer);
     GetOpenGLFuncAddress(glGenBuffers);

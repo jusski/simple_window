@@ -11,7 +11,7 @@ void main()
 #if 0 // Inverse
     vec4 Texel = texture2D(Texture, TexCoord);
     gl_FragColor = vec4(1.0 - Texel.xyz, 1.0);
-#elif 0 // GrayScale
+#elif 1 // GrayScale
     vec4 Texel = texture2D(Texture, TexCoord);
     float Average = 0.2126 * Texel.r + 0.7152 * Texel.g + 0.0722 * Texel.b;
     gl_FragColor = vec4(Average, Average, Average, 1.0);

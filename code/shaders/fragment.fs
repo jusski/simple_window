@@ -37,5 +37,9 @@ void main()
     vec3 PhongColor = AmbientColor + DiffuseColor + SpecularColor;
     //gl_FragColor = vec4(PhongColor, 1.0);
     gl_FragData[0] = vec4(PhongColor, 1.0);
-    gl_FragData[1] = vec4(0.3, 0.3, 0.3, 1.0);
+    float brightness = dot(PhongColor, vec3(0.2126, 0.7152, 0.0722));
+    if(brightness > 1.0)
+        gl_FragData[1] = vec4(PhongColor, 1.0);
+    else
+        gl_FragData[1] = vec4(0.0, 0.0, 0.0, 1.0);
 }

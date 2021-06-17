@@ -33,6 +33,7 @@ struct opengl_program
 opengl_program *GLProgram;
 opengl_program *EmiterProgram;
 opengl_program *PostProcessProgram;
+opengl_program *TextureProgram;
 bool Initialized = false;
 
 struct vertex

@@ -40,7 +40,14 @@ typedef char GLchar;
 #define GL_REPEAT                         0x2901
 #define GL_TEXTURE_2D                     0x0DE1
 #define GL_FLOAT                          0x1406
-
+#define GL_COLOR_ATTACHMENT0              0x8CE0
+#define GL_COLOR_ATTACHMENT1              0x8CE1
+#define GL_COLOR_ATTACHMENT2              0x8CE2
+#define GL_COLOR_ATTACHMENT3              0x8CE3
+#define GL_DEPTH_ATTACHMENT               0x8D00
+#define GL_STENCIL_ATTACHMENT             0x8D20
+#define GL_FRAMEBUFFER                    0x8D40
+#define GL_RENDERBUFFER                   0x8D41
 
 typedef void type_glBindBuffer (GLenum target, GLuint buffer);
 typedef void type_glGenBuffers (GLsizei n, GLuint *buffers);
@@ -71,6 +78,14 @@ typedef void type_glUniform4f (GLint location, GLfloat v0, GLfloat v1, GLfloat v
 typedef void type_glGenerateMipmap (GLenum target);
 typedef void type_glUniformMatrix3fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 typedef void type_glUniformMatrix4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+
+typedef void type_glFramebufferTexture2D (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+typedef void type_glFramebufferRenderbuffer (GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
+typedef void type_glBlitFramebuffer (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
+typedef void type_glBindRenderbuffer (GLenum target, GLuint renderbuffer);
+typedef void type_glGenRenderbuffers (GLsizei n, GLuint *renderbuffers);
+typedef void type_glBindFramebuffer (GLenum target, GLuint framebuffer);
+typedef void type_glGenFramebuffers (GLsizei n, GLuint *framebuffers);
 
 #define OpenGLFunction(name) type_##name *name;
 #define GetOpenGLFuncAddress(name) name = (type_##name *)wglGetProcAddress(#name);
@@ -103,6 +118,13 @@ OpenGLFunction(glUniform4f)
 OpenGLFunction(glGenerateMipmap)
 OpenGLFunction(glUniformMatrix3fv)
 OpenGLFunction(glUniformMatrix4fv)
+OpenGLFunction(glFramebufferTexture2D)
+OpenGLFunction(glFramebufferRenderbuffer)
+OpenGLFunction(glBlitFramebuffer)
+OpenGLFunction(glBindRenderbuffer)
+OpenGLFunction(glGenRenderbuffers)
+OpenGLFunction(glBindFramebuffer)
+OpenGLFunction(glGenFramebuffers)
 
 static void
 AssignOpenGLFunctions()
@@ -131,7 +153,15 @@ AssignOpenGLFunctions()
     GetOpenGLFuncAddress(glUniform2f)
     GetOpenGLFuncAddress(glUniform3f)
     GetOpenGLFuncAddress(glUniform4f)
-    GetOpenGLFuncAddressEXT(glGenerateMipmap)
     GetOpenGLFuncAddress(glUniformMatrix3fv)
     GetOpenGLFuncAddress(glUniformMatrix4fv)
+
+    GetOpenGLFuncAddressEXT(glGenerateMipmap)
+    GetOpenGLFuncAddressEXT(glFramebufferRenderbuffer)
+    GetOpenGLFuncAddressEXT(glBlitFramebuffer)
+    GetOpenGLFuncAddressEXT(glBindRenderbuffer)
+    GetOpenGLFuncAddressEXT(glGenRenderbuffers)
+    GetOpenGLFuncAddressEXT(glBindFramebuffer)
+    GetOpenGLFuncAddressEXT(glGenFramebuffers)
+    
 }

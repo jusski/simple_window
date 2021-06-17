@@ -92,8 +92,8 @@ polygon_mesh *Cube;
 polygon_mesh *BRDM;
 polygon_mesh *Cylinder;
 
-point *Points;
-int PointCount;
+point Points[10];
+int PointCount = 10;
 
 
 input_state Input;
@@ -105,12 +105,14 @@ v3 CORAL = {1.0f, 0.5f, 0.31f};
 v3 OLIVE = {0.33f, 0.42f, 0.18f};
 v3 WHITE = {0.8f, 0.9f, 0.9f};
 v3 BLACK = {0.2f, 0.3f, 0.3f};
+v3 YELLOW = {1.0f, 1.0f, 0.f};
 v3 SelectedObjectColor;
 
 m4 Projection;
 
 object3d *CubeObject;
 object3d *SphereObject;
+object3d *BRDMObject;
 object3d *SelectedObject;
 
 object3d *Objects3d[10];

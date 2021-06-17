@@ -35,7 +35,7 @@ InitializeOpenGL()
     GL_GETINTEGERV(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS);
     GL_GETINTEGERV(GL_MAX_DRAW_BUFFERS);
 #endif
-    glPointSize(10);
+    glPointSize(2);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glDepthFunc(GL_LESS);
@@ -74,11 +74,12 @@ DrawPrimitives(opengl_program *OpenGLProgram, point *Primitives, int Count, came
     glVertexAttribPointer(OpenGLProgram->Position, 3, GL_FLOAT, GL_FALSE,
                           sizeof(vertex), (void*)offsetof(vertex, Position));
     glEnableVertexAttribArray(OpenGLProgram->Position);
-    
+
+    glUniform3f(OpenGLProgram->Color, 1.0f, 1.0f, 0.0f);
     glUniformMatrix4fv(OpenGLProgram->Model, 1, GL_TRUE, (GLfloat *)Identity.E);
 
     m4 ViewMatrix = LookAt(Camera->Position, Camera->Direction, Camera->UpDirection);
-    glUniformMatrix4fv(OpenGLProgram->View, 1, GL_TRUE, (GLfloat *)ViewMatrix.E);
+    glUniformMatrix4fv(OpenGLProgram->View, 1, GL_TRUE, (GLfloat *)Identity.E);
 
     glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Identity.E);
     
@@ -248,12 +249,11 @@ GameLoop(input_state *InputState)
 
         CubeObject = CreateObject(Arena, Cube, Identity, CORAL, GLProgram);
         SphereObject = CreateObject(Arena, Sphere, YTranslate(-4.5), BLUE, GLProgram);
-
+        
         Objects3d[ObjectCount++] = CubeObject;
         Objects3d[ObjectCount++] = SphereObject;
-        //Objects3d[ObjectCount++] = CreateObject(Arena, Sphere, Identity, SKYBLUE, GLProgram);
-        //Objects3d[ObjectCount++] = CreateObject(Arena, Cylinder, Identity, BLACK, GLProgram);
-
+        Objects3d[ObjectCount++] = CreateObject(Arena, Sphere, Identity, BLACK, GLProgram);
+        
         Initialized = true;
      }
     
@@ -326,6 +326,7 @@ GameLoop(input_state *InputState)
     // Draw Objects TODO static or pointers objects?
     
     Transform(CubeObject, ZTranslate(-3.5) * XTranslate(-1.5) *ZRotate(Time) * YRotate(Time));
+    Transform(SphereObject, ZRotate(Time) * XTranslate(4));
 
     for(int Index = 0; Index < ObjectCount; ++Index)
     {
@@ -359,6 +360,6 @@ GameLoop(input_state *InputState)
             SelectedObject = 0;
         }
     }
-    
+    DrawPoint(EmiterProgram, V3(0, 0, 0), Camera);
     PrintLine(Camera->Direction);
 }

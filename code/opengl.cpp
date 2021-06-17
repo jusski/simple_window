@@ -1,6 +1,7 @@
 #include "opengl.h"
 #include "engine.h"
 #include "math.h"
+#include <string.h>
 
 m4 Identity =
 {
@@ -610,4 +611,29 @@ WorldSpaceToObjectSpace(m4 WorldSpace)
     m4 Result = Rotate * Translate;
 
     return(Result);
+}
+
+static void
+OpenGLDriverInfo()
+{
+    FILE *File;
+    File = fopen("opengl_driver_info.txt", "w");
+    if(File)
+    {
+        fprintf(File, "GL_VENDOR %s \n", glGetString(GL_VENDOR));
+        fprintf(File, "GL_RENDERER %s \n", glGetString(GL_RENDERER));
+        fprintf(File, "GL_VERSION %s \n", glGetString(GL_VERSION));
+        fprintf(File, "GL_SHADING_LANGUAGE_VERSION %s \n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+        char *Extensions = (char *)glGetString(GL_EXTENSIONS);
+        char *Token = strtok(Extensions, " ");
+        while(Token != 0)
+        {
+            fprintf(File, "\n%s", Token );
+            Token = strtok(0, " ");
+        }
+        //fprintf(File, "GL_EXTENSIONS %s \n", glGetString(GL_EXTENSIONS));
+        
+        fclose(File);
+    }
+    
 }

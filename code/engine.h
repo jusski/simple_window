@@ -6,9 +6,11 @@ GLuint VBO;
 GLuint EBO;
 GLuint FBO;
 GLuint ColorBuffer[2];
+GLuint TestTexture;
+GLuint TestTexture128;
 
-int ScreenWidth = 500;
-int ScreenHeight = 500;
+int ScreenWidth = 512;
+int ScreenHeight = 512;
 
 struct opengl_program
 {
@@ -85,6 +87,7 @@ struct object3d
 struct game_state
 {
     camera Camera;
+    float Time;
 };
 
 game_state GameState;

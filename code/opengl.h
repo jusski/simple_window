@@ -9,6 +9,7 @@ type_wglGetProcAddress *wglGetProcAddress;
 typedef signed long long int GLsizeiptr;
 typedef char GLchar;
 
+#define GL_FRAMEBUFFER_COMPLETE           0x8CD5
 #define GL_CLAMP_TO_EDGE                  0x812F
 #define GL_ELEMENT_ARRAY_BUFFER           0x8893
 #define GL_STREAM_DRAW                    0x88E0
@@ -87,6 +88,7 @@ typedef void type_glBindRenderbuffer (GLenum target, GLuint renderbuffer);
 typedef void type_glGenRenderbuffers (GLsizei n, GLuint *renderbuffers);
 typedef void type_glBindFramebuffer (GLenum target, GLuint framebuffer);
 typedef void type_glGenFramebuffers (GLsizei n, GLuint *framebuffers);
+typedef GLenum type_glCheckFramebufferStatus (GLenum target);
 
 #define OpenGLFunction(name) type_##name *name;
 #define GetOpenGLFuncAddress(name) name = (type_##name *)wglGetProcAddress(#name);
@@ -126,6 +128,7 @@ OpenGLFunction(glBindRenderbuffer)
 OpenGLFunction(glGenRenderbuffers)
 OpenGLFunction(glBindFramebuffer)
 OpenGLFunction(glGenFramebuffers)
+OpenGLFunction(glCheckFramebufferStatus)
 
 static void
 AssignOpenGLFunctions()
@@ -157,12 +160,14 @@ AssignOpenGLFunctions()
     GetOpenGLFuncAddress(glUniformMatrix3fv)
     GetOpenGLFuncAddress(glUniformMatrix4fv)
 
-    GetOpenGLFuncAddressEXT(glGenerateMipmap)
-    GetOpenGLFuncAddressEXT(glFramebufferRenderbuffer)
-    GetOpenGLFuncAddressEXT(glBlitFramebuffer)
-    GetOpenGLFuncAddressEXT(glBindRenderbuffer)
-    GetOpenGLFuncAddressEXT(glGenRenderbuffers)
-    GetOpenGLFuncAddressEXT(glBindFramebuffer)
-    GetOpenGLFuncAddressEXT(glGenFramebuffers)
+    GetOpenGLFuncAddressEXT(glGenerateMipmap);
+    GetOpenGLFuncAddressEXT(glFramebufferTexture2D);
+    GetOpenGLFuncAddressEXT(glFramebufferRenderbuffer);
+    GetOpenGLFuncAddressEXT(glBlitFramebuffer);
+    GetOpenGLFuncAddressEXT(glBindRenderbuffer);
+    GetOpenGLFuncAddressEXT(glGenRenderbuffers);
+    GetOpenGLFuncAddressEXT(glBindFramebuffer);
+    GetOpenGLFuncAddressEXT(glGenFramebuffers);
+    GetOpenGLFuncAddressEXT(glCheckFramebufferStatus);
     
 }

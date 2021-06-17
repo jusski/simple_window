@@ -16,7 +16,7 @@ PingPong()
     glGenFramebuffers(1, &FBO);
     glBindFramebuffer(GL_FRAMEBUFFER, FBO);
     glGenTextures(2, ColorBuffer);
-    for(int Iteration = 0; Iteration < 2; ++Iteration)
+    for(int Iteration = 0; Iteration < 2; ++Iteration) 
     {
         glBindTexture(GL_TEXTURE_2D, ColorBuffer[Iteration]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA,
@@ -25,12 +25,12 @@ PingPong()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
+        //IMPORTANT Do we need depth component attachment?
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + Iteration,
                                GL_TEXTURE_2D, ColorBuffer[Iteration], 0);
         
     }
-    
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 static void
@@ -87,7 +87,7 @@ DrawPrimitives(opengl_program *OpenGLProgram, triangle *Triangles, int Count, ca
 }
 
 static void
-DrawPrimitives(opengl_program *OpenGLProgram, point *Primitives, int Count, camera *Camera)
+DrawPrimitives(opengl_program *OpenGLProgram, point *Primitives, int Count = 1)
 {
     glUseProgram(OpenGLProgram->Program);
 
@@ -99,8 +99,6 @@ DrawPrimitives(opengl_program *OpenGLProgram, point *Primitives, int Count, came
 
     glUniform3f(OpenGLProgram->Color, 1.0f, 1.0f, 0.0f);
     glUniformMatrix4fv(OpenGLProgram->Model, 1, GL_TRUE, (GLfloat *)Identity.E);
-
-    m4 ViewMatrix = LookAt(Camera->Position, Camera->Direction, Camera->UpDirection);
     glUniformMatrix4fv(OpenGLProgram->View, 1, GL_TRUE, (GLfloat *)Identity.E);
 
     glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Identity.E);
@@ -109,10 +107,42 @@ DrawPrimitives(opengl_program *OpenGLProgram, point *Primitives, int Count, came
 }
 
 static void
-DrawPoint(opengl_program *OpenGLProgram, v3 Point, camera *Camera)
+DrawPoint(opengl_program *OpenGLProgram, v3 Point)
 {
     Points[0].A.Position = Point;
-    DrawPrimitives(OpenGLProgram, Points, 1, Camera);
+    DrawPrimitives(OpenGLProgram, Points);
+}
+
+static void
+DrawScreenQuad(opengl_program *OpenGLProgram, GLuint Texture, m4 Model = Identity)
+{
+    glUseProgram(OpenGLProgram->Program);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+    float Quad[] =
+    {
+        -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+         1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
+        -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
+         1.0f,  1.0f, -1.0f, 1.0f, 1.0f
+    };
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Quad), Quad, GL_STREAM_DRAW);
+    glVertexAttribPointer(OpenGLProgram->Position, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
+    glEnableVertexAttribArray(OpenGLProgram->Position);
+
+    glVertexAttribPointer(OpenGLProgram->TexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void *)(sizeof(float) * 3));
+    glEnableVertexAttribArray(OpenGLProgram->TexCoord);
+
+    glUniform3f(OpenGLProgram->Color, 1.0f, 0.0f, 0.0f);
+    glUniformMatrix4fv(OpenGLProgram->Model, 1, GL_TRUE, (GLfloat *)Model.E);
+    glUniformMatrix4fv(OpenGLProgram->View, 1, GL_TRUE, (GLfloat *)Identity.E);
+    glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Identity.E);
+
+    glBindTexture(GL_TEXTURE_2D, Texture);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 static void
@@ -226,17 +256,63 @@ CreateObject(arena *Arena, polygon_mesh *Mesh, m4 WorldSpaceTransform, v3 Color,
     return(Object);
 }
 
-extern "C" __declspec(dllexport) void
-GameLoop(input_state *InputState)
+static void
+CreateTestTexture(int Width, int Height)
 {
-    arena *Arena = &PersistentArena;
-
-    static float Time = 0;
-    Time += 0.01f;
-
-    if(!Initialized)
+    unsigned int *Image = (unsigned int *)malloc(Width * Height * sizeof(unsigned int));
+    unsigned int *Pixel = Image;
+    for(int Y = 0; Y < Height; ++Y)
     {
-        InitializeOpenGL();
+        unsigned int Color = Y % 2 ? 0 : -1;
+        for(int X = 0; X < Width; ++X)
+        {
+            *Pixel++ = Color;
+        }
+    }
+
+    glGenTextures(1, &TestTexture);
+    glBindTexture(GL_TEXTURE_2D, TestTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Image);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glGenerateMipmap(GL_TEXTURE_2D); 
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    free(Image);
+}
+
+static void
+CreateTestTexture128(int Width, int Height)
+{
+    unsigned int *Image = (unsigned int *)malloc(Width * Height * sizeof(unsigned int));
+    unsigned int *Pixel = Image;
+    for(int Y = 0; Y < Height; ++Y)
+    {
+        for(int X = 0; X < Width; ++X)
+        {
+            *Pixel++ = 0x80808080;
+        }
+    }
+
+    glGenTextures(1, &TestTexture128);
+    glBindTexture(GL_TEXTURE_2D, TestTexture128);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, Image);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glGenerateMipmap(GL_TEXTURE_2D); 
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    free(Image);
+}
+
+static void
+Initialize(arena *Arena)
+{
+            InitializeOpenGL(); 
         Arena->Memory = (unsigned char *)malloc(Megabytes(3));
         Arena->Index = 0;
         Arena->MaxIndex = Megabytes(3);
@@ -276,10 +352,18 @@ GameLoop(input_state *InputState)
         Objects3d[ObjectCount++] = SphereObject;
         Objects3d[ObjectCount++] = CreateObject(Arena, Sphere, Identity, BLACK, GLProgram);
 
-        Initialized = true;
-     }
-    
+        // Test Texture
+        CreateTestTexture(ScreenWidth, ScreenHeight);
+        CreateTestTexture128(ScreenWidth, ScreenHeight);
+        PingPong();
+}
+
+static void
+ProcessInput(input_state *InputState)
+{
     Input = *InputState;
+    camera *Camera = &GameState.Camera;
+
     float ZCameraOffset = 0.0f;
     float XCameraOffset = 0.0f;
     float YCameraOffset = 0.0f;
@@ -308,13 +392,30 @@ GameLoop(input_state *InputState)
     {
         ZCameraOffset += Input.Mouse.Wheel * 0.1f;
     }
-
-    glViewport(0, 0, 500, 500);
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
-    camera *Camera = &GameState.Camera;
-
+    if(InputState->Mouse.RButton == true)
+    {
+        if(SelectedObject == 0)
+        {
+            SelectedObject = RayTrace(Camera->Position, Camera->Direction, Objects3d[0], ObjectCount);
+            if(SelectedObject)
+            {
+                SelectedObjectColor = SelectedObject->Color;
+                SelectedObject->Color = WHITE;
+                v3 ObjectOrigin = (SelectedObject->WorldSpaceTransform * V4(SelectedObject->Origin, 1)).xyz;
+                Camera->Direction = ObjectOrigin - Camera->Position;
+            }        
+        }
+        
+    }
+    else
+    {
+        if(SelectedObject != 0)
+        {
+            SelectedObject->Color = SelectedObjectColor;
+            SelectedObject = 0;
+        }
+    }
+        
     v3 CameraXAxis = NOZ(Cross(Camera->Direction, Camera->UpDirection));
     v3 CameraYAxis = NOZ(Cross(CameraXAxis, Camera->Direction));
     Camera->UpDirection = CameraYAxis;
@@ -340,48 +441,66 @@ GameLoop(input_state *InputState)
         Camera->Direction =  ObjectOrigin - Camera->Position;
     }
 
+}
+
+static void
+Render(camera *Camera, float Time)
+{
+    glViewport(0, 0, ScreenWidth, ScreenHeight);
+
+    // Offscreen Rendering
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glEnable(GL_DEPTH_TEST);
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     // Draw Sun
     m4 WorldSpace = ZRotate(9*Time) * XTranslate(-1.5) * Scale(0.5);
     DrawLightSource(EmiterProgram, Sphere, Camera, WorldSpace);
     v4 LightSource = WorldSpace * V4(0, 0, 0, 1);
 
     // Draw Objects TODO static or pointers objects?
-    
     Transform(CubeObject, ZTranslate(-3.5) * XTranslate(-1.5) *ZRotate(Time) * YRotate(Time));
     Transform(SphereObject, ZRotate(Time) * XTranslate(4));
 
     for(int Index = 0; Index < ObjectCount; ++Index)
     {
         DrawObject(Objects3d[Index], Camera, LightSource);
-        PrintLine(Objects3d[Index]->Origin);
-        PrintLine(Objects3d[Index]->SquaredRadius);
     }
 
-    // RayTrace
-    if(InputState->Mouse.RButton == true)
-    {
-        if(SelectedObject == 0)
-        {
-            SelectedObject = RayTrace(Camera->Position, Camera->Direction, Objects3d[0], ObjectCount);
-            if(SelectedObject)
-            {
-                SelectedObjectColor = SelectedObject->Color;
-                SelectedObject->Color = WHITE;
-                v3 ObjectOrigin = (SelectedObject->WorldSpaceTransform * V4(SelectedObject->Origin, 1)).xyz;
-                Camera->Direction = ObjectOrigin - Camera->Position;
-            }        
-        }
-        
-    }
-    else
-    {
-        if(SelectedObject != 0)
-        {
-            SelectedObject->Color = SelectedObjectColor;
-            SelectedObject = 0;
-        }
-    }
     // Crosshair
-    DrawPoint(EmiterProgram, V3(0, 0, 0), Camera);
-    PrintLine(Camera->Direction);
+    DrawPoint(EmiterProgram, V3(0, 0, 0));
+    
+    //DrawScreenQuad(EmiterProgram, TestTexture);
+
+
+    // Draw Rendered Texture
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+    glViewport(0, 0, ScreenWidth, ScreenHeight);
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
+
+    DrawScreenQuad(EmiterProgram, ColorBuffer[0]);
+    
+}
+
+extern "C" __declspec(dllexport) void
+GameLoop(input_state *InputState)
+{
+    arena *Arena = &PersistentArena;
+
+    GameState.Time += 0.01f;
+
+    if(!Initialized)
+    {
+        Initialize(Arena);
+        Initialized = true;
+    }
+    // Process Input and Camera
+    ProcessInput(InputState);
+    
+    //Rendering Starts Here
+    Render(&GameState.Camera, GameState.Time);
 }

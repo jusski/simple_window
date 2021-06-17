@@ -280,7 +280,7 @@ int main()
     Window = CreateWindowEx(0,
                             WindowClass.lpszClassName,
                             "Simple OpenGL Window",
-                            WS_POPUP, 500, 200, 500, 500,
+                            WS_POPUP, 500, 200, 512, 512,
                             NULL, NULL, GetModuleHandle(0), NULL);
     if(Window)
     {
@@ -289,7 +289,7 @@ int main()
 
         DeviceContext = GetDC(Window);
         Win32InitializeOpenGL();
-        Win32UpgradeOpenGLContext();
+        //Win32UpgradeOpenGLContext();
         
         ShowCursor(false);
         SetCursorPos(600, 300);

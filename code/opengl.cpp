@@ -497,7 +497,6 @@ CreateOpenGLProgram(const char *VertexShaderSource, const char *FragmentShaderSo
         Result.Normal = glGetAttribLocation(Program, "aNormal");
         Result.TexCoord = glGetAttribLocation(Program, "aTexCoord");
 
-
         Result.Color = glGetUniformLocation(Program, "Color");
         Result.Model = glGetUniformLocation(Program, "Model");
         Result.View = glGetUniformLocation(Program, "View");

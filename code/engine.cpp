@@ -30,6 +30,8 @@ PingPong()
                                GL_TEXTURE_2D, ColorBuffer[Iteration], 0);
         
     }
+    GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    glDrawBuffers(2, DrawBuffers);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -333,6 +335,9 @@ Initialize(arena *Arena)
         *GLProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/fragment.fs");
         EmiterProgram =PushStruct(Arena, opengl_program);
         *EmiterProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/emiter.fs");
+        PostProcessProgram =PushStruct(Arena, opengl_program);
+        *PostProcessProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/postprocessing.fs");
+
         // TODO move to object
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
@@ -473,7 +478,6 @@ Render(camera *Camera, float Time)
     
     //DrawScreenQuad(EmiterProgram, TestTexture);
 
-
     // Draw Rendered Texture
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     
@@ -482,7 +486,7 @@ Render(camera *Camera, float Time)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDisable(GL_DEPTH_TEST);
 
-    DrawScreenQuad(EmiterProgram, ColorBuffer[0]);
+    DrawScreenQuad(EmiterProgram, ColorBuffer[1]);
     
 }
 

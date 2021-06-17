@@ -35,5 +35,7 @@ void main()
     vec3 SpecularColor = Color * 0.5 * SpecularFactor * LightColor;
 
     vec3 PhongColor = AmbientColor + DiffuseColor + SpecularColor;
-    gl_FragColor = vec4(PhongColor, 1.0);
+    //gl_FragColor = vec4(PhongColor, 1.0);
+    gl_FragData[0] = vec4(PhongColor, 1.0);
+    gl_FragData[1] = vec4(0.3, 0.3, 0.3, 1.0);
 }

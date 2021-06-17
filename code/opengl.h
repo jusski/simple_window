@@ -89,6 +89,7 @@ typedef void type_glGenRenderbuffers (GLsizei n, GLuint *renderbuffers);
 typedef void type_glBindFramebuffer (GLenum target, GLuint framebuffer);
 typedef void type_glGenFramebuffers (GLsizei n, GLuint *framebuffers);
 typedef GLenum type_glCheckFramebufferStatus (GLenum target);
+typedef void type_glDrawBuffers (GLsizei n, const GLenum *bufs);
 
 #define OpenGLFunction(name) type_##name *name;
 #define GetOpenGLFuncAddress(name) name = (type_##name *)wglGetProcAddress(#name);
@@ -129,6 +130,7 @@ OpenGLFunction(glGenRenderbuffers)
 OpenGLFunction(glBindFramebuffer)
 OpenGLFunction(glGenFramebuffers)
 OpenGLFunction(glCheckFramebufferStatus)
+OpenGLFunction(glDrawBuffers)
 
 static void
 AssignOpenGLFunctions()
@@ -159,6 +161,7 @@ AssignOpenGLFunctions()
     GetOpenGLFuncAddress(glUniform4f)
     GetOpenGLFuncAddress(glUniformMatrix3fv)
     GetOpenGLFuncAddress(glUniformMatrix4fv)
+    GetOpenGLFuncAddress(glDrawBuffers)
 
     GetOpenGLFuncAddressEXT(glGenerateMipmap);
     GetOpenGLFuncAddressEXT(glFramebufferTexture2D);
@@ -169,5 +172,4 @@ AssignOpenGLFunctions()
     GetOpenGLFuncAddressEXT(glBindFramebuffer);
     GetOpenGLFuncAddressEXT(glGenFramebuffers);
     GetOpenGLFuncAddressEXT(glCheckFramebufferStatus);
-    
 }

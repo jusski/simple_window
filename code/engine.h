@@ -4,6 +4,11 @@
 
 GLuint VBO;
 GLuint EBO;
+GLuint FBO;
+GLuint ColorBuffer[2];
+
+int ScreenWidth = 500;
+int ScreenHeight = 500;
 
 struct opengl_program
 {

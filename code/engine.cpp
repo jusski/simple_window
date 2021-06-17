@@ -11,10 +11,32 @@
 #include "ray_trace.cpp"
 
 static void
+PingPong()
+{
+    glGenFramebuffers(1, &FBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glGenTextures(2, ColorBuffer);
+    for(int Iteration = 0; Iteration < 2; ++Iteration)
+    {
+        glBindTexture(GL_TEXTURE_2D, ColorBuffer[Iteration]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA,
+                     GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + Iteration,
+                               GL_TEXTURE_2D, ColorBuffer[Iteration], 0);
+        
+    }
+    
+}
+
+static void
 Transform(object3d *Object, m4 ModelMatrix)
 {
     Object->WorldSpaceTransform = ModelMatrix;
-    //Object->OriginTransformed = (ModelMatrix * V4(Object->Origin, 1)).xyz;
 }
 
 extern "C" __declspec(dllexport) void
@@ -253,7 +275,7 @@ GameLoop(input_state *InputState)
         Objects3d[ObjectCount++] = CubeObject;
         Objects3d[ObjectCount++] = SphereObject;
         Objects3d[ObjectCount++] = CreateObject(Arena, Sphere, Identity, BLACK, GLProgram);
-        
+
         Initialized = true;
      }
     
@@ -347,7 +369,6 @@ GameLoop(input_state *InputState)
                 SelectedObject->Color = WHITE;
                 v3 ObjectOrigin = (SelectedObject->WorldSpaceTransform * V4(SelectedObject->Origin, 1)).xyz;
                 Camera->Direction = ObjectOrigin - Camera->Position;
-                
             }        
         }
         
@@ -360,6 +381,7 @@ GameLoop(input_state *InputState)
             SelectedObject = 0;
         }
     }
+    // Crosshair
     DrawPoint(EmiterProgram, V3(0, 0, 0), Camera);
     PrintLine(Camera->Direction);
 }

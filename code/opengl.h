@@ -9,6 +9,11 @@ type_wglGetProcAddress *wglGetProcAddress;
 typedef signed long long int GLsizeiptr;
 typedef char GLchar;
 
+#define GL_TEXTURE0                       0x84C0
+#define GL_TEXTURE1                       0x84C1
+#define GL_TEXTURE2                       0x84C2
+#define GL_TEXTURE3                       0x84C3
+#define GL_TEXTURE4                       0x84C4
 #define GL_FRAMEBUFFER_COMPLETE           0x8CD5
 #define GL_CLAMP_TO_EDGE                  0x812F
 #define GL_ELEMENT_ARRAY_BUFFER           0x8893
@@ -74,12 +79,14 @@ typedef void type_glGetShaderInfoLog (GLuint shader, GLsizei bufSize, GLsizei *l
 typedef void type_glDeleteShader (GLuint shader);
 typedef GLint type_glGetAttribLocation (GLuint program, const GLchar *name);
 typedef void type_glUniform1f (GLint location, GLfloat v0);
+typedef  void type_glUniform1i (GLint location, GLint v0);
 typedef void type_glUniform2f (GLint location, GLfloat v0, GLfloat v1);
 typedef void type_glUniform3f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
 typedef void type_glUniform4f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 typedef void type_glGenerateMipmap (GLenum target);
 typedef void type_glUniformMatrix3fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 typedef void type_glUniformMatrix4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+typedef void type_glActiveTexture (GLenum texture);
 
 typedef void type_glFramebufferTexture2D (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
 typedef void type_glFramebufferRenderbuffer (GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
@@ -131,6 +138,8 @@ OpenGLFunction(glBindFramebuffer)
 OpenGLFunction(glGenFramebuffers)
 OpenGLFunction(glCheckFramebufferStatus)
 OpenGLFunction(glDrawBuffers)
+OpenGLFunction(glActiveTexture)
+OpenGLFunction(glUniform1i)
 
 static void
 AssignOpenGLFunctions()
@@ -162,6 +171,8 @@ AssignOpenGLFunctions()
     GetOpenGLFuncAddress(glUniformMatrix3fv)
     GetOpenGLFuncAddress(glUniformMatrix4fv)
     GetOpenGLFuncAddress(glDrawBuffers)
+    GetOpenGLFuncAddress(glActiveTexture)
+    GetOpenGLFuncAddress(glUniform1i)
 
     GetOpenGLFuncAddressEXT(glGenerateMipmap);
     GetOpenGLFuncAddressEXT(glFramebufferTexture2D);

@@ -59,6 +59,18 @@ struct textured_quad_program
     GLuint VBO;
 };
 
+struct blend_textures_program
+{
+    GLuint Program;
+    GLint Position;
+    GLint TexCoord;
+
+    GLint Texture1;
+    GLint Texture2;
+
+    GLuint VBO;
+};
+
 struct bright_color_extraction
 {
     GLuint Program;
@@ -84,6 +96,7 @@ textured_quad_program *TexturedQuadProgram;
 
 gausian_blur_program GausianBlurProgram;
 bright_color_extraction BrightColorExtractionProgram;
+blend_textures_program BlendTexturesProgram;
 
 bool Initialized = false;
 

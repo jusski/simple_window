@@ -449,51 +449,92 @@ static void DrawScene(camera *Camera)
     }
 
     // Crosshair
-    DrawPoint(EmiterProgram, V3(0, 0, 0));
+    //DrawPoint(EmiterProgram, V3(0, 0, 0));
     
 }
 
 static void
 RenderBloomEffect(camera *Camera)
 {
+    GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
     // Bright Color extraction
     glBindFramebuffer(GL_FRAMEBUFFER, BrightColorExtractionFBO);
-    GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
     glDrawBuffers(2, DrawBuffers);
     DrawScene(Camera);
-PrintLine((int)glGetError());    
+
     // Gausian Blur
     glUseProgram(GausianBlurProgram.Program);
-    GLenum DrawBuffers2[] = {GL_COLOR_ATTACHMENT0 };
-     glDrawBuffers(1, DrawBuffers2);
-    glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[0]);
-    PrintLine((int)glCheckFramebufferStatus(GL_FRAMEBUFFER));
-    
-    glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawBuffers(1, DrawBuffers);
+    glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[1]);
     glDisable(GL_DEPTH_TEST);
+    glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
     glBindBuffer(GL_ARRAY_BUFFER, GausianBlurProgram.VBO);
-
     glVertexAttribPointer(GausianBlurProgram.Position, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
     glEnableVertexAttribArray(GausianBlurProgram.Position);
-
     glVertexAttribPointer(GausianBlurProgram.TexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void *)(sizeof(float) * 3));
     glEnableVertexAttribArray(GausianBlurProgram.TexCoord);
-
-    glBindTexture(GL_TEXTURE_2D, ColorBuffer[1]);
+    //glUniform1i(GausianBlurProgram.Horizontal, 1);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glBindTexture(GL_TEXTURE_2D, 0);
+#if 0
+    GLuint Texture = ColorBuffer[1];
+    int Loop = 2;
+    int CurrentFBO = 1;
+    int Horizontal = 1;
+    //while(Loop-->0)
+    {
+        //glDrawBuffers(1, DrawBuffers);
     
-    PrintLine((int)glGetError());    
-#if 1
+        glBindTexture(GL_TEXTURE_2D, Texture);
+        glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[0]);
+        //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        //GL_TEXTURE_2D, PingPongColorBuffer[0], 0);
+        //glDisable(GL_DEPTH_TEST);
+        //glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
+        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+        glUniform1i(GausianBlurProgram.Horizontal, Horizontal);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        Texture = PingPongColorBuffer[1];
+        CurrentFBO = 1 - CurrentFBO;
+        Horizontal = 1 - Horizontal;
+    }
+#endif
+#if 0
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     // Render Texture to screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDisable(GL_DEPTH_TEST);
-    DrawScreenQuad(TexturedQuadProgram, PingPongColorBuffer[0]);
+    
+    glUseProgram(BlendTexturesProgram.Program);
+
+    glBindBuffer(GL_ARRAY_BUFFER, BlendTexturesProgram.VBO);
+
+    glVertexAttribPointer(BlendTexturesProgram.Position, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
+    glEnableVertexAttribArray(BlendTexturesProgram.Position);
+
+    glVertexAttribPointer(BlendTexturesProgram.TexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void *)(sizeof(float) * 3));
+    glEnableVertexAttribArray(BlendTexturesProgram.TexCoord);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ColorBuffer[0]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[0]);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glActiveTexture(GL_TEXTURE0);
 #endif
-    PrintLine((int)glGetError());
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    DrawScreenQuad(TexturedQuadProgram, PingPongColorBuffer[1]);
+    
 }
 
 static void
@@ -507,10 +548,10 @@ Render(camera *Camera)
 static void
 InitBloomEffect()
 {
+    GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    
+    // bright color extraction
     BrightColorExtractionProgram = CreateBrightColorExtractionProgram("../code/shaders/bright_color_extraction.vs", "../code/shaders/bright_color_extraction.fs");
-    GausianBlurProgram = CreateGausianBlurProgram("../code/shaders/gausian_blur.vs", "../code/shaders/gausian_blur.fs");
-
-    // 2 Colorbuffer attachments for bright color extraction
     glGenFramebuffers(1, &BrightColorExtractionFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, BrightColorExtractionFBO);
     glGenTextures(2, ColorBuffer);
@@ -524,14 +565,13 @@ InitBloomEffect()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + ColorBufferIndex,
                                GL_TEXTURE_2D, ColorBuffer[ColorBufferIndex], 0);
-        
     }
-    GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    
     glDrawBuffers(2, DrawBuffers);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     
     // Gausian Blur 2 ping pong framebuffers
-#if 1
+    GausianBlurProgram = CreateGausianBlurProgram("../code/shaders/gausian_blur.vs", "../code/shaders/gausian_blur.fs");
     glGenFramebuffers(1, PingPongFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[0]);
     glGenTextures(2, PingPongColorBuffer);
@@ -546,44 +586,12 @@ InitBloomEffect()
 
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                GL_TEXTURE_2D, PingPongColorBuffer[Index], 0);
-#if 0
-        glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[1]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 1,
-                               GL_TEXTURE_2D, PingPongColorBuffer[1], 0);
-#endif
-        GLenum DrawBuffers2[] = {GL_COLOR_ATTACHMENT0 };
-        //    glDrawBuffers(1, DrawBuffers2);
+        glDrawBuffers(1, DrawBuffers);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-#else
-    glGenFramebuffers(1, PingPongFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[0]);
-    glGenTextures(2, PingPongColorBuffer);
-    for(int ColorBufferIndex = 0; ColorBufferIndex < 2; ++ColorBufferIndex)
-    {
-        glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[ColorBufferIndex]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + ColorBufferIndex,
-                               GL_TEXTURE_2D, PingPongColorBuffer[ColorBufferIndex], 0);
-        
-    }
-    glDrawBuffers(2, DrawBuffers);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    
-#endif
-    // Blending both textures 
-    
+    // Blending both textures
+    BlendTexturesProgram = CreateBlendTexturesProgram("../code/shaders/blend_textures.vs", "../code/shaders/blend_textures.fs");
 }
 
 extern "C" __declspec(dllexport) void

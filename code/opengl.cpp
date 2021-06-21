@@ -562,6 +562,34 @@ CreateTexturePostProcessProgram(const char *VertexShaderSource, const char *Frag
     return(Result);    
 }
 
+static blend_textures_program
+CreateBlendTexturesProgram(const char *VertexShaderSource, const char *FragmentShaderSource)
+{
+    blend_textures_program Result = {};
+    GLuint Program = CreateOpenGLProgram(VertexShaderSource, FragmentShaderSource);
+    if(Program)
+    {
+        Result.Program = Program;
+        Result.Position = glGetAttribLocation(Program, "aPosition");
+        Result.TexCoord = glGetAttribLocation(Program, "aTexCoord");
+        
+        Result.Texture1 = glGetUniformLocation(Program, "Texture1");
+        Result.Texture2 = glGetUniformLocation(Program, "Texture2");
+
+        float Quad[] =
+        {
+            -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+            1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
+            -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
+            1.0f,  1.0f, -1.0f, 1.0f, 1.0f
+        };
+        glGenBuffers(1, &Result.VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, Result.VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Quad), Quad, GL_STATIC_DRAW);
+    }
+    return(Result);    
+}
+
 static bright_color_extraction
 CreateBrightColorExtractionProgram(const char *VertexShaderSource, const char *FragmentShaderSource)
 {

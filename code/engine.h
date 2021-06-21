@@ -8,6 +8,11 @@ GLuint FBO;
 GLuint ColorBuffer[2];
 GLuint TestTexture;
 GLuint TestTexture128;
+GLuint PingPongFBO[2];
+GLuint PingPongColorBuffer[2];
+GLuint BrightColorExtractionFBO;
+
+float Time = 0;
 
 int ScreenWidth = 512;
 int ScreenHeight = 512;
@@ -30,10 +35,56 @@ struct opengl_program
     GLint Projection;
 };
 
+struct gausian_blur_program
+{
+    GLuint Program;
+    GLint Position;
+    GLint TexCoord;
+
+    GLint Horizontal;
+
+    GLuint VBO;
+};
+
+struct textured_quad_program
+{
+    GLuint Program;
+    GLint Position;
+    GLint TexCoord;
+    GLint Model;
+
+    GLint Color;
+    GLint Texture;
+
+    GLuint VBO;
+};
+
+struct bright_color_extraction
+{
+    GLuint Program;
+
+    GLint Position;
+    GLint Normal;
+    GLint TexCoord;
+
+    GLint Color;
+    
+    GLint LightSource;
+    GLint CameraPosition;
+    
+    GLint Model;
+    GLint View;
+    GLint Projection;
+};
+
 opengl_program *GLProgram;
 opengl_program *EmiterProgram;
-opengl_program *PostProcessProgram;
-opengl_program *TextureProgram;
+textured_quad_program *PostProcessProgram;
+textured_quad_program *TexturedQuadProgram;
+
+gausian_blur_program GausianBlurProgram;
+bright_color_extraction BrightColorExtractionProgram;
+
 bool Initialized = false;
 
 struct vertex

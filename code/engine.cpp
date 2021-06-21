@@ -11,31 +11,6 @@
 #include "ray_trace.cpp"
 
 static void
-PingPong()
-{
-    glGenFramebuffers(1, &FBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-    glGenTextures(2, ColorBuffer);
-    for(int Iteration = 0; Iteration < 2; ++Iteration) 
-    {
-        glBindTexture(GL_TEXTURE_2D, ColorBuffer[Iteration]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA,
-                     GL_UNSIGNED_BYTE, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        //IMPORTANT Do we need depth component attachment?
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + Iteration,
-                               GL_TEXTURE_2D, ColorBuffer[Iteration], 0);
-        
-    }
-    GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-    glDrawBuffers(2, DrawBuffers);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-static void
 Transform(object3d *Object, m4 ModelMatrix)
 {
     Object->WorldSpaceTransform = ModelMatrix;
@@ -116,21 +91,12 @@ DrawPoint(opengl_program *OpenGLProgram, v3 Point)
 }
 
 static void
-DrawScreenQuad(opengl_program *OpenGLProgram, GLuint Texture, m4 Model = Identity)
+DrawScreenQuad(textured_quad_program *OpenGLProgram, GLuint Texture, m4 Model = Identity)
 {
     glUseProgram(OpenGLProgram->Program);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, OpenGLProgram->VBO);
 
-    float Quad[] =
-    {
-        -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
-         1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
-        -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
-         1.0f,  1.0f, -1.0f, 1.0f, 1.0f
-    };
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Quad), Quad, GL_STREAM_DRAW);
     glVertexAttribPointer(OpenGLProgram->Position, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
     glEnableVertexAttribArray(OpenGLProgram->Position);
 
@@ -139,16 +105,14 @@ DrawScreenQuad(opengl_program *OpenGLProgram, GLuint Texture, m4 Model = Identit
 
     glUniform3f(OpenGLProgram->Color, 1.0f, 0.0f, 0.0f);
     glUniformMatrix4fv(OpenGLProgram->Model, 1, GL_TRUE, (GLfloat *)Model.E);
-    glUniformMatrix4fv(OpenGLProgram->View, 1, GL_TRUE, (GLfloat *)Identity.E);
-    glUniformMatrix4fv(OpenGLProgram->Projection, 1, GL_TRUE, (GLfloat *)Identity.E);
-
+    
     glBindTexture(GL_TEXTURE_2D, Texture);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 static void
-DrawQuad(opengl_program *Program, GLuint Texture, int X, int Y, int Width)
+DrawQuad(textured_quad_program *Program, GLuint Texture, int X, int Y, int Width)
 {
     float ScaleFactor = (float)Width / ScreenWidth;
     float XOffset = 2.0f*(float)X / ScreenWidth + (ScaleFactor - 1);
@@ -341,14 +305,16 @@ Initialize(arena *Arena)
         *BRDM = LoadModelSTL(Arena, "../code/models/BRDM.stl");
 
         // Create OpenGL Program
+        
         GLProgram = PushStruct(Arena, opengl_program);
-        *GLProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/fragment.fs");
-        EmiterProgram =PushStruct(Arena, opengl_program);
-        *EmiterProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/emiter.fs");
-        TextureProgram =PushStruct(Arena, opengl_program);
-        *TextureProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/texture.fs");
-        //PostProcessProgram =PushStruct(Arena, opengl_program);
-        //*PostProcessProgram = CreateOpenGLProgram("../code/shaders/vertex.vs", "../code/shaders/postprocessing.fs");
+        *GLProgram = CreateGenericProgram("../code/shaders/vertex.vs", "../code/shaders/fragment.fs");
+        EmiterProgram = PushStruct(Arena, opengl_program);
+        *EmiterProgram = CreateGenericProgram("../code/shaders/vertex.vs", "../code/shaders/emiter.fs");
+        TexturedQuadProgram = PushStruct(Arena, textured_quad_program);
+        *TexturedQuadProgram = CreateTexturedQuadProgram("../code/shaders/textured_quad.vs", "../code/shaders/textured_quad.fs");
+        PostProcessProgram = PushStruct(Arena, textured_quad_program);
+        *PostProcessProgram = CreateTexturePostProcessProgram("../code/shaders/postprocessing.vs", "../code/shaders/postprocessing.fs");
+        
 
         // TODO move to object
         glGenBuffers(1, &VBO);
@@ -372,7 +338,7 @@ Initialize(arena *Arena)
         // Test Texture
         CreateTestTexture(ScreenWidth, ScreenHeight);
         CreateTestTexture128(ScreenWidth, ScreenHeight);
-        PingPong();
+        
 }
 
 static void
@@ -460,16 +426,13 @@ ProcessInput(input_state *InputState)
 
 }
 
-static void
-Render(camera *Camera, float Time)
+static void DrawScene(camera *Camera)
 {
-    glViewport(0, 0, ScreenWidth, ScreenHeight);
-
-    // Offscreen Rendering
-    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUseProgram(BrightColorExtractionProgram.Program);
 
     // Draw Sun
     m4 WorldSpace = ZRotate(9*Time) * XTranslate(-1.5) * Scale(0.5);
@@ -488,19 +451,138 @@ Render(camera *Camera, float Time)
     // Crosshair
     DrawPoint(EmiterProgram, V3(0, 0, 0));
     
-    //DrawScreenQuad(EmiterProgram, TestTexture);
+}
 
-    // Draw Rendered Texture
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+static void
+RenderBloomEffect(camera *Camera)
+{
+    // Bright Color extraction
+    glBindFramebuffer(GL_FRAMEBUFFER, BrightColorExtractionFBO);
+    GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, DrawBuffers);
+    DrawScene(Camera);
+PrintLine((int)glGetError());    
+    // Gausian Blur
+    glUseProgram(GausianBlurProgram.Program);
+    GLenum DrawBuffers2[] = {GL_COLOR_ATTACHMENT0 };
+     glDrawBuffers(1, DrawBuffers2);
+    glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[0]);
+    PrintLine((int)glCheckFramebufferStatus(GL_FRAMEBUFFER));
     
-    glViewport(0, 0, ScreenWidth, ScreenHeight);
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
+    glBindBuffer(GL_ARRAY_BUFFER, GausianBlurProgram.VBO);
+
+    glVertexAttribPointer(GausianBlurProgram.Position, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
+    glEnableVertexAttribArray(GausianBlurProgram.Position);
+
+    glVertexAttribPointer(GausianBlurProgram.TexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void *)(sizeof(float) * 3));
+    glEnableVertexAttribArray(GausianBlurProgram.TexCoord);
+
+    glBindTexture(GL_TEXTURE_2D, ColorBuffer[1]);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    
+    PrintLine((int)glGetError());    
+#if 1
+    // Render Texture to screen
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glDisable(GL_DEPTH_TEST);
+    DrawScreenQuad(TexturedQuadProgram, PingPongColorBuffer[0]);
+#endif
+    PrintLine((int)glGetError());
+}
 
-    DrawScreenQuad(TextureProgram, ColorBuffer[1]);
+static void
+Render(camera *Camera)
+{
+    glViewport(0, 0, ScreenWidth, ScreenHeight);
 
-    DrawQuad(TextureProgram, ColorBuffer[0], 400, 400, 512-400);
+    RenderBloomEffect(Camera);
+}
+
+static void
+InitBloomEffect()
+{
+    BrightColorExtractionProgram = CreateBrightColorExtractionProgram("../code/shaders/bright_color_extraction.vs", "../code/shaders/bright_color_extraction.fs");
+    GausianBlurProgram = CreateGausianBlurProgram("../code/shaders/gausian_blur.vs", "../code/shaders/gausian_blur.fs");
+
+    // 2 Colorbuffer attachments for bright color extraction
+    glGenFramebuffers(1, &BrightColorExtractionFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, BrightColorExtractionFBO);
+    glGenTextures(2, ColorBuffer);
+    for(int ColorBufferIndex = 0; ColorBufferIndex < 2; ++ColorBufferIndex)
+    {
+        glBindTexture(GL_TEXTURE_2D, ColorBuffer[ColorBufferIndex]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + ColorBufferIndex,
+                               GL_TEXTURE_2D, ColorBuffer[ColorBufferIndex], 0);
+        
+    }
+    GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    glDrawBuffers(2, DrawBuffers);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+    // Gausian Blur 2 ping pong framebuffers
+#if 1
+    glGenFramebuffers(1, PingPongFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[0]);
+    glGenTextures(2, PingPongColorBuffer);
+    for(int Index = 0; Index < 1; ++Index)
+    {
+        glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[Index]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_2D, PingPongColorBuffer[Index], 0);
+#if 0
+        glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[1]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 1,
+                               GL_TEXTURE_2D, PingPongColorBuffer[1], 0);
+#endif
+        GLenum DrawBuffers2[] = {GL_COLOR_ATTACHMENT0 };
+        //    glDrawBuffers(1, DrawBuffers2);
+
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+#else
+    glGenFramebuffers(1, PingPongFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[0]);
+    glGenTextures(2, PingPongColorBuffer);
+    for(int ColorBufferIndex = 0; ColorBufferIndex < 2; ++ColorBufferIndex)
+    {
+        glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[ColorBufferIndex]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + ColorBufferIndex,
+                               GL_TEXTURE_2D, PingPongColorBuffer[ColorBufferIndex], 0);
+        
+    }
+    glDrawBuffers(2, DrawBuffers);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+#endif
+    // Blending both textures 
     
 }
 
@@ -509,16 +591,17 @@ GameLoop(input_state *InputState)
 {
     arena *Arena = &PersistentArena;
 
-    GameState.Time += 0.01f;
+    Time += 0.01f;
 
     if(!Initialized)
     {
         Initialize(Arena);
+        InitBloomEffect();
         Initialized = true;
     }
     // Process Input and Camera
     ProcessInput(InputState);
     
     //Rendering Starts Here
-    Render(&GameState.Camera, GameState.Time);
+    Render(&GameState.Camera);
 }

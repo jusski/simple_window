@@ -468,17 +468,17 @@ CreateShader(GLint ShaderType, const char *ShaderPath)
             char InfoLog[512];
             glGetShaderInfoLog(VertexShader, sizeof(InfoLog), 0, InfoLog);
             const char *Type = (ShaderType == GL_VERTEX_SHADER) ? "VERTEX" : "FRAGMENT";
-            fprintf(stderr, "ERROR: %s::SHADER::COMPILATION_FAILED\n%s\n", Type, InfoLog);
+            fprintf(stderr, "ERROR: %s::SHADER::COMPILATION_FAILED\n%s\n%s\n", Type, ShaderPath, InfoLog);
         }
         free(ShaderSource);
     }
     return(Result);
 }
 
-static opengl_program
+static GLuint
 CreateOpenGLProgram(const char *VertexShaderSource, const char *FragmentShaderSource)
 {
-    opengl_program Result = {};
+    GLuint Result = 0;
 
     GLuint VertexShader = CreateShader(GL_VERTEX_SHADER, VertexShaderSource);
     GLuint FragmentShader = CreateShader(GL_FRAGMENT_SHADER, FragmentShaderSource);
@@ -492,18 +492,7 @@ CreateOpenGLProgram(const char *VertexShaderSource, const char *FragmentShaderSo
     glGetProgramiv(Program, GL_LINK_STATUS, &Success);
     if(Success)
     {
-        Result.Program = Program;
-        Result.Position = glGetAttribLocation(Program, "aPosition");
-        Result.Normal = glGetAttribLocation(Program, "aNormal");
-        Result.TexCoord = glGetAttribLocation(Program, "aTexCoord");
-
-        Result.Color = glGetUniformLocation(Program, "Color");
-        Result.Model = glGetUniformLocation(Program, "Model");
-        Result.View = glGetUniformLocation(Program, "View");
-        Result.Projection = glGetUniformLocation(Program, "Projection");
-        Result.LightSource = glGetUniformLocation(Program, "LightSource");
-        Result.CameraPosition = glGetUniformLocation(Program, "CameraPosition");
-        
+        Result = Program;
         glDeleteShader(VertexShader);
         glDeleteShader(FragmentShader);
     }
@@ -513,15 +502,142 @@ CreateOpenGLProgram(const char *VertexShaderSource, const char *FragmentShaderSo
         glGetProgramInfoLog(Program, sizeof(InfoLog), 0, InfoLog);
         fprintf(stderr, "ERROR: PROGRAM::LINK_FAILED\n%s\n", InfoLog);
     }
-
     return(Result);
 }
 
-static opengl_program
-CreateOpenGLProgram()
+static textured_quad_program
+CreateTexturedQuadProgram(const char *VertexShaderSource, const char *FragmentShaderSource)
 {
-    return(CreateOpenGLProgram("../code/shaders/vertex.vs",  "../code/shaders/fragment.fs"));
+    textured_quad_program Result = {};
+    GLuint Program = CreateOpenGLProgram(VertexShaderSource, FragmentShaderSource);
+    if(Program)
+    {
+        Result.Program = Program;
+        Result.Position = glGetAttribLocation(Program, "aPosition");
+        Result.TexCoord = glGetAttribLocation(Program, "aTexCoord");
+
+        Result.Color = glGetUniformLocation(Program, "Color");
+        Result.Model = glGetUniformLocation(Program, "Model");
+       
+        float Quad[] =
+        {
+            -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+            1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
+            -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
+            1.0f,  1.0f, -1.0f, 1.0f, 1.0f
+        };
+        glGenBuffers(1, &Result.VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, Result.VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Quad), Quad, GL_STATIC_DRAW);
+
+    }
+    return(Result);    
 }
+
+static textured_quad_program
+CreateTexturePostProcessProgram(const char *VertexShaderSource, const char *FragmentShaderSource)
+{
+    textured_quad_program Result = {};
+    GLuint Program = CreateOpenGLProgram(VertexShaderSource, FragmentShaderSource);
+    if(Program)
+    {
+        Result.Program = Program;
+        Result.Position = glGetAttribLocation(Program, "aPosition");
+        Result.TexCoord = glGetAttribLocation(Program, "aTexCoord");
+        
+        Result.Color = glGetUniformLocation(Program, "Color");
+        Result.Model = glGetUniformLocation(Program, "Model");
+
+        float Quad[] =
+        {
+            -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+            1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
+            -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
+            1.0f,  1.0f, -1.0f, 1.0f, 1.0f
+        };
+        glGenBuffers(1, &Result.VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, Result.VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Quad), Quad, GL_STATIC_DRAW);
+    }
+    return(Result);    
+}
+
+static bright_color_extraction
+CreateBrightColorExtractionProgram(const char *VertexShaderSource, const char *FragmentShaderSource)
+{
+    bright_color_extraction Result = {};
+    GLuint Program = CreateOpenGLProgram(VertexShaderSource, FragmentShaderSource);
+    if(Program)
+    {
+        Result.Program = Program;
+        Result.Position = glGetAttribLocation(Program, "aPosition");
+        Result.Normal = glGetAttribLocation(Program, "aNormal");
+        Result.TexCoord = glGetAttribLocation(Program, "aTexCoord");
+
+        Result.LightSource = glGetUniformLocation(Program, "LightSource");
+        Result.CameraPosition = glGetUniformLocation(Program, "CameraPosition");
+        Result.Color = glGetUniformLocation(Program, "Color");
+        
+        Result.Model = glGetUniformLocation(Program, "Model");
+        Result.View = glGetUniformLocation(Program, "View");
+        Result.Projection = glGetUniformLocation(Program, "Projection");
+        
+    }
+    return(Result);    
+}
+
+static opengl_program
+CreateGenericProgram(const char *VertexShaderSource, const char *FragmentShaderSource)
+{
+    opengl_program Result = {};
+    GLuint Program = CreateOpenGLProgram(VertexShaderSource, FragmentShaderSource);
+    if(Program)
+    {
+        Result.Program = Program;
+        Result.Position = glGetAttribLocation(Program, "aPosition");
+        Result.Normal = glGetAttribLocation(Program, "aNormal");
+        Result.TexCoord = glGetAttribLocation(Program, "aTexCoord");
+
+        Result.LightSource = glGetUniformLocation(Program, "LightSource");
+        Result.CameraPosition = glGetUniformLocation(Program, "CameraPosition");
+        
+        Result.Color = glGetUniformLocation(Program, "Color");
+        Result.Model = glGetUniformLocation(Program, "Model");
+        Result.View = glGetUniformLocation(Program, "View");
+        Result.Projection = glGetUniformLocation(Program, "Projection");
+        
+    }
+    return(Result);
+}
+
+static gausian_blur_program
+CreateGausianBlurProgram(char *VertexShaderSource, char *FragmentShaderSource)
+{
+    gausian_blur_program Result = {};
+    GLuint Program = CreateOpenGLProgram(VertexShaderSource, FragmentShaderSource);
+    if(Program)
+    {
+        Result.Program = Program;
+        Result.Position = glGetAttribLocation(Program, "aPosition");
+        Result.TexCoord = glGetAttribLocation(Program, "aTexCoord");
+        
+        Result.Horizontal = glGetUniformLocation(Program, "Horizontal");
+        
+        float Quad[] =
+        {
+            -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+             1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
+            -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
+             1.0f,  1.0f, -1.0f, 1.0f, 1.0f
+        };
+        glGenBuffers(1, &Result.VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, Result.VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Quad), Quad, GL_STATIC_DRAW);
+    }
+                
+    return(Result);
+}
+
 static m4
 LookAt(v3 CameraPosition, v3 CameraDirection, v3 Up)
 {

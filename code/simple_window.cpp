@@ -26,7 +26,7 @@ Print(short Row, const char *Message, ...)
     vprintf(Message, vl);
     va_end(vl);
 }
-
+typedef const char *(WINAPI * PFNWGLGETEXTENSIONSSTRINGARBPROC) (HDC hdc);
 static void
 Win32InitializeOpenGL()
 {
@@ -61,6 +61,8 @@ Win32InitializeOpenGL()
         {
             fprintf(stderr,"[ERROR] Failed to set OpenGL Context\n");
         }
+        
+        //PFNWGLGETEXTENSIONSSTRINGARBPROC _wglGetExtensionsStringEXT = (PFNWGLGETEXTENSIONSSTRINGARBPROC) wglGetProcAddress("wglGetExtensionsStringEXT");
     }
     else
     {

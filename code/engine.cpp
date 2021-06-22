@@ -449,7 +449,7 @@ static void DrawScene(camera *Camera)
     }
 
     // Crosshair
-    //DrawPoint(EmiterProgram, V3(0, 0, 0));
+    DrawPoint(EmiterProgram, V3(0, 0, 0));
     
 }
 
@@ -459,51 +459,50 @@ RenderBloomEffect(camera *Camera)
     GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
     // Bright Color extraction
     glBindFramebuffer(GL_FRAMEBUFFER, BrightColorExtractionFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ColorBuffer[0], 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, ColorBuffer[1], 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, RenderBuffer);
     glDrawBuffers(2, DrawBuffers);
+
     DrawScene(Camera);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Gausian Blur
     glUseProgram(GausianBlurProgram.Program);
-    glDrawBuffers(1, DrawBuffers);
-    glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[1]);
-    glDisable(GL_DEPTH_TEST);
-    glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     glBindBuffer(GL_ARRAY_BUFFER, GausianBlurProgram.VBO);
     glVertexAttribPointer(GausianBlurProgram.Position, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
     glEnableVertexAttribArray(GausianBlurProgram.Position);
     glVertexAttribPointer(GausianBlurProgram.TexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void *)(sizeof(float) * 3));
     glEnableVertexAttribArray(GausianBlurProgram.TexCoord);
-    //glUniform1i(GausianBlurProgram.Horizontal, 1);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-#if 0
+    
     GLuint Texture = ColorBuffer[1];
-    int Loop = 2;
-    int CurrentFBO = 1;
+    int Loop = 10;
+    int CurrentFBO = 0;
     int Horizontal = 1;
-    //while(Loop-->0)
+    while(Loop-->0)
     {
-        //glDrawBuffers(1, DrawBuffers);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[CurrentFBO]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                               PingPongColorBuffer[CurrentFBO], 0);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, RenderBuffer);
+        glDrawBuffers(1, DrawBuffers);
+        Assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+        glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
         glBindTexture(GL_TEXTURE_2D, Texture);
-        glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[0]);
-        //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-        //GL_TEXTURE_2D, PingPongColorBuffer[0], 0);
-        //glDisable(GL_DEPTH_TEST);
-        //glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
-        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
         glUniform1i(GausianBlurProgram.Horizontal, Horizontal);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        Texture = PingPongColorBuffer[1];
+
+        Texture = PingPongColorBuffer[CurrentFBO];
         CurrentFBO = 1 - CurrentFBO;
         Horizontal = 1 - Horizontal;
     }
-#endif
-#if 0
-    glBindTexture(GL_TEXTURE_2D, 0);
 
+#if 1
+    
     // Render Texture to screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
@@ -523,17 +522,20 @@ RenderBloomEffect(camera *Camera)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, ColorBuffer[0]);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[0]);
+    glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[1]);
 
+    glUniform1i(BlendTexturesProgram.Texture1, 0);
+    glUniform1i(BlendTexturesProgram.Texture2, 1);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     glActiveTexture(GL_TEXTURE0);
-#endif
+#else
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDisable(GL_DEPTH_TEST);
-    glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
+    glClearColor(0.25, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     DrawScreenQuad(TexturedQuadProgram, PingPongColorBuffer[1]);
+#endif
     
 }
 
@@ -555,6 +557,8 @@ InitBloomEffect()
     glGenFramebuffers(1, &BrightColorExtractionFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, BrightColorExtractionFBO);
     glGenTextures(2, ColorBuffer);
+    glGenRenderbuffers(1, &RenderBuffer);
+    
     for(int ColorBufferIndex = 0; ColorBufferIndex < 2; ++ColorBufferIndex)
     {
         glBindTexture(GL_TEXTURE_2D, ColorBuffer[ColorBufferIndex]);
@@ -565,28 +569,34 @@ InitBloomEffect()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + ColorBufferIndex,
                                GL_TEXTURE_2D, ColorBuffer[ColorBufferIndex], 0);
+        PrintLine(ColorBufferIndex);
+        Assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
     }
+    glBindRenderbuffer(GL_RENDERBUFFER, RenderBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, ScreenWidth, ScreenHeight);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, RenderBuffer);
     
     glDrawBuffers(2, DrawBuffers);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     
     // Gausian Blur 2 ping pong framebuffers
     GausianBlurProgram = CreateGausianBlurProgram("../code/shaders/gausian_blur.vs", "../code/shaders/gausian_blur.fs");
-    glGenFramebuffers(1, PingPongFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[0]);
-    glGenTextures(2, PingPongColorBuffer);
-    for(int Index = 0; Index < 1; ++Index)
+    for(int FrameBufferId = 0; FrameBufferId < 2; ++FrameBufferId)
     {
-        glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[Index]);
+        glGenTextures(1, &PingPongColorBuffer[FrameBufferId]);
+        glBindTexture(GL_TEXTURE_2D, PingPongColorBuffer[FrameBufferId]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ScreenWidth, ScreenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                               GL_TEXTURE_2D, PingPongColorBuffer[Index], 0);
+        glGenFramebuffers(1, &PingPongFBO[FrameBufferId]);
+        glBindFramebuffer(GL_FRAMEBUFFER, PingPongFBO[FrameBufferId]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, PingPongColorBuffer[FrameBufferId], 0);
         glDrawBuffers(1, DrawBuffers);
+
+        Assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -600,7 +610,7 @@ GameLoop(input_state *InputState)
     arena *Arena = &PersistentArena;
 
     Time += 0.01f;
-
+    
     if(!Initialized)
     {
         Initialize(Arena);

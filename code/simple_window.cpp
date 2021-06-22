@@ -3,6 +3,7 @@
 //#include "engine.cpp"
 #include "simple_window.h"
 
+#if 0
 static void
 Print(const char *Message, ...)
 {
@@ -13,9 +14,9 @@ Print(const char *Message, ...)
     va_end(vl);
     ConsoleCursorPosition.Y += 1;
 }
+#endif
 
-
-static void
+extern "C" static void
 Print(short Row, const char *Message, ...)
 {
     COORD Coord = {};

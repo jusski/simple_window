@@ -33,6 +33,6 @@ void main()
         result += texture2D(Texture, TexCoord - vec2(0.0, tex_offset * 3.0)).rgb * 0.054054;
         result += texture2D(Texture, TexCoord - vec2(0.0, tex_offset * 4.0)).rgb * 0.016216;
     }
-    result = vec3(1.0, 0, 1.0);
+    //result = vec3(1.0, 0, 1.0);
     gl_FragColor = vec4(result, 1.0);
 }

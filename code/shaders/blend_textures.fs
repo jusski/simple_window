@@ -7,8 +7,12 @@ uniform sampler2D Texture2;
 
 void main()
 {
-    vec4 Texel1 = texture2D(Texture1, TexCoord);
-    vec4 Texel2 = texture2D(Texture2, TexCoord);
-    gl_FragColor = Texel1 + Texel2;
-//    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    vec3 Texel1 = texture2D(Texture1, TexCoord).rgb;
+    vec3 Texel2 = texture2D(Texture2, TexCoord).rgb;
+    Texel1 = Texel1 * Texel1;
+    Texel2 = Texel2 * Texel2;
+    vec3 Exponent = Texel1 + Texel2;
+    vec3 Color = 1.0 - exp(-Exponent * 1.0);
+    vec3 sRGB = sqrt(Color);
+    gl_FragColor = vec4(sRGB, 1.0);
 }

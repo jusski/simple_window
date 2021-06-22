@@ -9,6 +9,9 @@ type_wglGetProcAddress *wglGetProcAddress;
 typedef signed long long int GLsizeiptr;
 typedef char GLchar;
 
+#define GL_DEPTH_COMPONENT16              0x81A5
+#define GL_DEPTH_COMPONENT24              0x81A6
+#define GL_DEPTH_COMPONENT32              0x81A7
 #define GL_TEXTURE0                       0x84C0
 #define GL_TEXTURE1                       0x84C1
 #define GL_TEXTURE2                       0x84C2
@@ -97,6 +100,7 @@ typedef void type_glBindFramebuffer (GLenum target, GLuint framebuffer);
 typedef void type_glGenFramebuffers (GLsizei n, GLuint *framebuffers);
 typedef GLenum type_glCheckFramebufferStatus (GLenum target);
 typedef void type_glDrawBuffers (GLsizei n, const GLenum *bufs);
+typedef void type_glRenderbufferStorage (GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
 
 #define OpenGLFunction(name) type_##name *name;
 #define GetOpenGLFuncAddress(name) name = (type_##name *)wglGetProcAddress(#name);
@@ -140,6 +144,7 @@ OpenGLFunction(glCheckFramebufferStatus)
 OpenGLFunction(glDrawBuffers)
 OpenGLFunction(glActiveTexture)
 OpenGLFunction(glUniform1i)
+OpenGLFunction(glRenderbufferStorage)
 
 static void
 AssignOpenGLFunctions()
@@ -183,4 +188,6 @@ AssignOpenGLFunctions()
     GetOpenGLFuncAddressEXT(glBindFramebuffer);
     GetOpenGLFuncAddressEXT(glGenFramebuffers);
     GetOpenGLFuncAddressEXT(glCheckFramebufferStatus);
+    GetOpenGLFuncAddressEXT(glRenderbufferStorage);
+    
 }

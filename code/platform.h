@@ -9,6 +9,7 @@
 #define Pi 3.14159265359f
 
 
+
 struct arena
 {
     unsigned char *Memory;
@@ -63,7 +64,7 @@ struct input_state
     bool PolygonMode;
 };
 
-typedef void (type_print)(const char *, ...);
+typedef void (type_print)(short, const char *, ...);
 typedef void *(type_wglGetProcAddress)(const char *);
 typedef void (type_initialize_opengl)(type_wglGetProcAddress *);
 typedef void (type_game_loop)(input_state *InputState);

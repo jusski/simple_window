@@ -6,6 +6,7 @@ GLuint VBO;
 GLuint EBO;
 GLuint FBO;
 GLuint ColorBuffer[2];
+GLuint RenderBuffer;
 GLuint TestTexture;
 GLuint TestTexture128;
 GLuint PingPongFBO[2];

@@ -450,8 +450,6 @@ static void DrawScene(camera *Camera)
 
     // Crosshair
     DrawPoint(EmiterProgram, V3(0, 0, 0));
-    DrawObject();....
-    
 }
 
 static void
